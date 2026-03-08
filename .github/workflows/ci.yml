@@ -44,25 +44,9 @@ jobs:
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-      - name: Debug secrets shape
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: |
-          python3 -c "
-          import os
-          cid = os.environ.get('TELEGRAM_CHAT_ID','')
-          tok = os.environ.get('TELEGRAM_BOT_TOKEN','')
-          print(f'CHAT_ID length: {len(cid)}')
-          print(f'CHAT_ID starts with dash: {cid.startswith(\"-\")}')
-          print(f'CHAT_ID repr: {repr(cid[:3])}...{repr(cid[-3:])}')
-          print(f'TOKEN length: {len(tok)}')
-          print(f'TOKEN has colon: {\":\" in tok}')
-          "
-
       - name: Integration tests
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           GOOGLE_SPREADSHEET_ID: ${{ secrets.GOOGLE_SPREADSHEET_ID }}
-        run: uv run pytest tests/test_integration.py -q -s
+        run: uv run pytest tests/test_integration.py -q

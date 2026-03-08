@@ -42,3 +42,4 @@ telegram:
 # --- Scheduling ---
 schedule:
   interval_minutes: 60
+  timeout_seconds: 240    # Python-side timeout (Cloud Run hard limit is 300s)
