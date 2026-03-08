@@ -1,0 +1,8 @@
+.venv/
+venv/
+__pycache__/
+.env
+credentials.json
+*.log
+.claude/
+.git/
