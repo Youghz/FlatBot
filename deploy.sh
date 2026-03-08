@@ -59,7 +59,17 @@ echo -n "${TELEGRAM_CHAT_ID}" | gcloud secrets create telegram-chat-id \
 echo -n "${TELEGRAM_CHAT_ID}" | gcloud secrets versions add telegram-chat-id \
   --data-file=- --project="${PROJECT_ID}"
 
+echo -n "${GOOGLE_SPREADSHEET_ID}" | gcloud secrets create google-spreadsheet-id \
+  --data-file=- --project="${PROJECT_ID}" 2>/dev/null || \
+echo -n "${GOOGLE_SPREADSHEET_ID}" | gcloud secrets versions add google-spreadsheet-id \
+  --data-file=- --project="${PROJECT_ID}"
+
 # Grant service account access to secrets
+gcloud secrets add-iam-policy-binding google-spreadsheet-id \
+  --member="serviceAccount:${SERVICE_ACCOUNT}" \
+  --role="roles/secretmanager.secretAccessor" \
+  --project="${PROJECT_ID}" --quiet
+
 gcloud secrets add-iam-policy-binding telegram-bot-token \
   --member="serviceAccount:${SERVICE_ACCOUNT}" \
   --role="roles/secretmanager.secretAccessor" \
@@ -76,7 +86,7 @@ gcloud run jobs create "${JOB_NAME}" \
   --region="${REGION}" \
   --project="${PROJECT_ID}" \
   --service-account="${SERVICE_ACCOUNT}" \
-  --set-secrets="TELEGRAM_BOT_TOKEN=telegram-bot-token:latest,TELEGRAM_CHAT_ID=telegram-chat-id:latest" \
+  --set-secrets="TELEGRAM_BOT_TOKEN=telegram-bot-token:latest,TELEGRAM_CHAT_ID=telegram-chat-id:latest,GOOGLE_SPREADSHEET_ID=google-spreadsheet-id:latest" \
   --memory=512Mi \
   --task-timeout=300s \
   --max-retries=1 \
@@ -86,7 +96,7 @@ gcloud run jobs update "${JOB_NAME}" \
   --region="${REGION}" \
   --project="${PROJECT_ID}" \
   --service-account="${SERVICE_ACCOUNT}" \
-  --set-secrets="TELEGRAM_BOT_TOKEN=telegram-bot-token:latest,TELEGRAM_CHAT_ID=telegram-chat-id:latest" \
+  --set-secrets="TELEGRAM_BOT_TOKEN=telegram-bot-token:latest,TELEGRAM_CHAT_ID=telegram-chat-id:latest,GOOGLE_SPREADSHEET_ID=google-spreadsheet-id:latest" \
   --memory=512Mi \
   --task-timeout=300s \
   --max-retries=1

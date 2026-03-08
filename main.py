@@ -10,17 +10,17 @@ import argparse
 import logging
 import os
 import re
-import time
 import sys
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import yaml
 from dotenv import load_dotenv
 
 from http_client import create_session
-from scrapers import kijiji, centris
-from sheets import add_listings
 from notifier import send_notification
+from scrapers import centris, kijiji
+from sheets import add_listings
 
 logging.basicConfig(
     level=logging.INFO,
@@ -68,10 +68,7 @@ def run_once(config: dict) -> bool:
 
     # Run scrapers in parallel
     with ThreadPoolExecutor(max_workers=len(scrapers)) as pool:
-        futures = {
-            pool.submit(fn, config, session): name
-            for name, (fn, session) in scrapers.items()
-        }
+        futures = {pool.submit(fn, config, session): name for name, (fn, session) in scrapers.items()}
         for future in as_completed(futures):
             name = futures[future]
             try:
@@ -118,6 +115,7 @@ def run_check(config: dict) -> bool:
     try:
         session = create_session()
         from http_client import get
+
         resp = get(session, "https://www.kijiji.ca/b-appartement-condo/ville-de-montreal/c37l1700281")
         checks["Kijiji"] = resp.status_code == 200
     except Exception as e:
@@ -128,6 +126,7 @@ def run_check(config: dict) -> bool:
     try:
         session = create_session()
         from http_client import get
+
         resp = get(session, "https://www.centris.ca/fr/propriete~a-louer~montreal-rosemont-la-petite-patrie")
         checks["Centris"] = resp.status_code == 200
     except Exception as e:
@@ -137,6 +136,7 @@ def run_check(config: dict) -> bool:
     # 3. Google Sheets
     try:
         from sheets import _get_client, _get_or_create_spreadsheet
+
         client = _get_client(config)
         spreadsheet = _get_or_create_spreadsheet(client, config)
         sheet = spreadsheet.sheet1
@@ -149,6 +149,7 @@ def run_check(config: dict) -> bool:
     # 4. Telegram
     try:
         import requests as req
+
         token = config["telegram"]["bot_token"]
         chat_id = config["telegram"]["chat_id"]
         if not token or "${" in token:

@@ -1,60 +1,70 @@
 """Unit tests for parsing functions."""
 
 import pytest
+
 from scrapers.kijiji import (
-    _extract_bedrooms_from_text,
-    _parse_price,
-    _matches_criteria,
-    _check_furnished_parking,
     Listing,
+    _check_furnished_parking,
+    _extract_bedrooms_from_text,
+    _matches_criteria,
+    _parse_price,
 )
 
 
 class TestExtractBedrooms:
     """Test Quebec notation and standard bedroom extraction."""
 
-    @pytest.mark.parametrize("text,expected", [
-        ("5½", 3),
-        ("5 ½", 3),
-        ("5 1/2", 3),
-        ("5 et demi", 3),
-        ("5.5", 3),
-        ("4½", 2),
-        ("4 1/2", 2),
-        ("6½", 4),
-        ("3½", 1),
-        ("3 chambres", 3),
-        ("3 bedrooms", 3),
-        ("2 bed apartment", 2),
-        ("Grand 6 ½ meublé à Villeray", 4),
-        ("Bel appart 5 ½ meublé 3 chambres à coucher", 3),  # explicit wins
-        ("", 0),
-        ("studio", 0),
-    ])
+    @pytest.mark.parametrize(
+        "text,expected",
+        [
+            ("5½", 3),
+            ("5 ½", 3),
+            ("5 1/2", 3),
+            ("5 et demi", 3),
+            ("5.5", 3),
+            ("4½", 2),
+            ("4 1/2", 2),
+            ("6½", 4),
+            ("3½", 1),
+            ("3 chambres", 3),
+            ("3 bedrooms", 3),
+            ("2 bed apartment", 2),
+            ("Grand 6 ½ meublé à Villeray", 4),
+            ("Bel appart 5 ½ meublé 3 chambres à coucher", 3),  # explicit wins
+            ("", 0),
+            ("studio", 0),
+        ],
+    )
     def test_bedroom_extraction(self, text, expected):
         assert _extract_bedrooms_from_text(text) == expected
 
 
 class TestParsePrice:
-    @pytest.mark.parametrize("text,expected", [
-        ("$2,500.00", 2500.0),
-        ("2 500 $", 2.0),  # regex picks first number group
-        ("$3,000", 3000.0),
-        ("Free", 0.0),
-        ("", 0.0),
-    ])
+    @pytest.mark.parametrize(
+        "text,expected",
+        [
+            ("$2,500.00", 2500.0),
+            ("2 500 $", 2.0),  # regex picks first number group
+            ("$3,000", 3000.0),
+            ("Free", 0.0),
+            ("", 0.0),
+        ],
+    )
     def test_price_parsing(self, text, expected):
         assert _parse_price(text) == expected
 
 
 class TestFurnishedParking:
-    @pytest.mark.parametrize("text,furnished,parking", [
-        ("Appartement meublé avec stationnement", True, True),
-        ("Furnished apartment with parking", True, True),
-        ("Non meublé, pas de parking", False, False),
-        ("Meubles inclus, garage", True, True),
-        ("Logement vide", False, False),
-    ])
+    @pytest.mark.parametrize(
+        "text,furnished,parking",
+        [
+            ("Appartement meublé avec stationnement", True, True),
+            ("Furnished apartment with parking", True, True),
+            ("Non meublé, pas de parking", False, False),
+            ("Meubles inclus, garage", True, True),
+            ("Logement vide", False, False),
+        ],
+    )
     def test_furnished_parking(self, text, furnished, parking):
         f, p = _check_furnished_parking(text)
         assert f == furnished
