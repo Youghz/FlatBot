@@ -44,12 +44,14 @@ def test_google_sheets_read_write():
 @skip_no_creds
 def test_telegram_send_message():
     """Verify we can send a message to the Telegram chat."""
+    token = TELEGRAM_BOT_TOKEN.strip()
+    chat_id = TELEGRAM_CHAT_ID.strip()
     resp = requests.post(
-        f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
+        f"https://api.telegram.org/bot{token}/sendMessage",
         json={
-            "chat_id": TELEGRAM_CHAT_ID,
+            "chat_id": chat_id,
             "text": "[CI] Integration test OK",
         },
         timeout=10,
     )
-    assert resp.status_code == 200
+    assert resp.status_code == 200, f"Telegram API returned {resp.status_code}: {resp.text}"
