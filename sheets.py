@@ -1,7 +1,7 @@
 """Google Sheets integration for storing and tracking listings."""
 
 import logging
-from datetime import datetime
+from datetime import date, datetime
 
 import google.auth
 import gspread
@@ -37,6 +37,7 @@ HEADERS = [
     "Parking",
     "URL",
     "Date ajout",
+    "Emmenagement",
     "Description",
 ]
 
@@ -123,6 +124,7 @@ def add_listings(listings: list, config: dict) -> tuple[list, str]:
             "Oui" if listing.parking else "Non",
             listing.url,
             now,
+            listing.move_in_date or "",
             _sanitize_cell(listing.description[:200]),
         ]
         rows_to_add.append(row)
@@ -133,4 +135,49 @@ def add_listings(listings: list, config: dict) -> tuple[list, str]:
         logger.info(f"Added {len(rows_to_add)} new listings to sheet")
 
     url = spreadsheet.url
+
+    # Clean up listings with past move-in dates
+    _remove_expired_listings(sheet)
+
     return new_listings, url
+
+
+def _remove_expired_listings(sheet) -> None:
+    """Remove rows where the move-in date is in the past."""
+    try:
+        all_rows = sheet.get_all_values()
+    except Exception as e:
+        logger.warning(f"Could not read sheet for cleanup: {e}")
+        return
+
+    if len(all_rows) <= 1:
+        return
+
+    headers = all_rows[0]
+    try:
+        date_col = headers.index("Emmenagement")
+    except ValueError:
+        return
+
+    today = date.today()
+    rows_to_delete = []
+
+    # Iterate from bottom to top so row indices stay valid during deletion
+    for i in range(len(all_rows) - 1, 0, -1):
+        row = all_rows[i]
+        if date_col >= len(row):
+            continue
+        move_in = row[date_col].strip()
+        if not move_in or move_in == "immediate":
+            continue
+        try:
+            move_in_date = datetime.strptime(move_in, "%Y-%m-%d").date()
+            if move_in_date < today:
+                rows_to_delete.append(i + 1)  # 1-indexed for Sheets API
+        except ValueError:
+            continue
+
+    if rows_to_delete:
+        for row_num in rows_to_delete:
+            sheet.delete_rows(row_num)
+        logger.info(f"Removed {len(rows_to_delete)} expired listings from sheet")
