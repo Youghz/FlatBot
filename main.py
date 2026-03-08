@@ -22,11 +22,36 @@ from notifier import send_notification
 from scrapers import centris, kijiji
 from sheets import add_listings
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-)
+
+def _setup_logging():
+    """Use JSON logging on Cloud Run, human-readable locally."""
+    if os.environ.get("K_SERVICE") or os.environ.get("CLOUD_RUN_JOB"):
+        import json as _json
+
+        class JsonFormatter(logging.Formatter):
+            def format(self, record):
+                return _json.dumps(
+                    {
+                        "severity": record.levelname,
+                        "message": record.getMessage(),
+                        "logger": record.name,
+                        "timestamp": self.formatTime(record),
+                    }
+                )
+
+        handler = logging.StreamHandler()
+        handler.setFormatter(JsonFormatter())
+        logging.root.handlers = [handler]
+        logging.root.setLevel(logging.INFO)
+    else:
+        logging.basicConfig(
+            level=logging.INFO,
+            format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
+        )
+
+
+_setup_logging()
 logger = logging.getLogger(__name__)
 
 
@@ -58,6 +83,7 @@ def run_once(config: dict) -> bool:
 
     all_listings = []
     sources = config.get("sources", [])
+    timeout_s = config.get("schedule", {}).get("timeout_seconds", 240)
 
     # Each scraper gets its own session (connection pooling per site)
     scrapers = {}
@@ -66,15 +92,17 @@ def run_once(config: dict) -> bool:
     if "centris" in sources:
         scrapers["centris"] = (centris.scrape, create_session())
 
-    # Run scrapers in parallel
+    # Run scrapers in parallel with timeout
     with ThreadPoolExecutor(max_workers=len(scrapers)) as pool:
         futures = {pool.submit(fn, config, session): name for name, (fn, session) in scrapers.items()}
-        for future in as_completed(futures):
+        for future in as_completed(futures, timeout=timeout_s):
             name = futures[future]
             try:
                 results = future.result()
                 all_listings.extend(results)
                 logger.info(f"{name}: {len(results)} matching listings")
+                if len(results) == 0:
+                    logger.warning(f"{name}: 0 listings found — site HTML may have changed")
             except Exception as e:
                 logger.error(f"{name} scraper failed: {e}")
 
@@ -156,7 +184,7 @@ def run_check(config: dict) -> bool:
             raise ValueError("bot_token not configured")
         resp = req.post(
             f"https://api.telegram.org/bot{token}/sendMessage",
-            json={"chat_id": chat_id, "text": "[check] Flat Research health check OK"},
+            json={"chat_id": int(chat_id), "text": "[check] Flat Research health check OK"},
             timeout=10,
         )
         checks["Telegram"] = resp.status_code == 200

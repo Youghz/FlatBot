@@ -45,8 +45,12 @@ gcloud builds submit \
   --project="${PROJECT_ID}" \
   --region="${REGION}"
 
-echo "=== 6. Store Telegram secrets in Secret Manager ==="
-source .env
+echo "=== 6. Store secrets in Secret Manager ==="
+# Read .env safely (no shell execution)
+while IFS='=' read -r key value; do
+  [[ -z "$key" || "$key" =~ ^# ]] && continue
+  export "$key"="$value"
+done < .env
 
 # Create or update secrets
 echo -n "${TELEGRAM_BOT_TOKEN}" | gcloud secrets create telegram-bot-token \
@@ -118,7 +122,28 @@ gcloud scheduler jobs update http "${JOB_NAME}-schedule" \
   --oauth-service-account-email="${SERVICE_ACCOUNT}" \
   --project="${PROJECT_ID}"
 
-echo "=== 9. Smoke test ==="
+echo "=== 9. Create daily health check scheduler ==="
+gcloud scheduler jobs create http "${JOB_NAME}-healthcheck" \
+  --location="${REGION}" \
+  --schedule="0 8 * * *" \
+  --uri="https://${REGION}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${PROJECT_ID}/jobs/${JOB_NAME}:run" \
+  --http-method=POST \
+  --message-body='{"overrides":{"containerOverrides":[{"args":["--check"]}]}}' \
+  --headers="Content-Type=application/json" \
+  --oauth-service-account-email="${SERVICE_ACCOUNT}" \
+  --project="${PROJECT_ID}" \
+  2>/dev/null || \
+gcloud scheduler jobs update http "${JOB_NAME}-healthcheck" \
+  --location="${REGION}" \
+  --schedule="0 8 * * *" \
+  --uri="https://${REGION}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${PROJECT_ID}/jobs/${JOB_NAME}:run" \
+  --http-method=POST \
+  --message-body='{"overrides":{"containerOverrides":[{"args":["--check"]}]}}' \
+  --headers="Content-Type=application/json" \
+  --oauth-service-account-email="${SERVICE_ACCOUNT}" \
+  --project="${PROJECT_ID}"
+
+echo "=== 10. Smoke test ==="
 echo "Running health check on Cloud Run..."
 gcloud run jobs execute "${JOB_NAME}" \
   --region="${REGION}" \
@@ -139,6 +164,23 @@ else
   echo "WARNING: Smoke test may have failed. Check logs:"
   echo "  gcloud run jobs executions list --job=${JOB_NAME} --region=${REGION} --project=${PROJECT_ID}"
 fi
+
+echo "=== 11. Enable monitoring and create alert policy ==="
+gcloud services enable monitoring.googleapis.com --project="${PROJECT_ID}"
+
+# Create alert policy for failed Cloud Run Job executions
+# Uses gcloud alpha — falls back gracefully if not available
+gcloud alpha monitoring policies create \
+  --display-name="Flat Research Job Failed" \
+  --condition-display-name="Cloud Run Job execution failed" \
+  --condition-filter='resource.type="cloud_run_job" AND resource.labels.job_name="flat-research" AND metric.type="run.googleapis.com/job/completed_execution_count" AND metric.labels.result="failed"' \
+  --condition-threshold-value=1 \
+  --condition-threshold-comparison=COMPARISON_GT \
+  --condition-threshold-duration=0s \
+  --condition-threshold-aggregation='{"alignmentPeriod":"300s","perSeriesAligner":"ALIGN_SUM"}' \
+  --combiner=OR \
+  --project="${PROJECT_ID}" \
+  2>/dev/null || echo "Alert policy already exists or gcloud alpha not available — create manually in Cloud Monitoring console"
 
 echo ""
 echo "=== Done! ==="
