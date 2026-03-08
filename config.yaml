@@ -32,7 +32,7 @@ sources:
 # Run: gcloud auth application-default login
 google_sheets:
   spreadsheet_name: "Flat Research - Montreal"
-  spreadsheet_id: "REDACTED_SPREADSHEET_ID"
+  spreadsheet_id: "${GOOGLE_SPREADSHEET_ID}"
 
 # --- Telegram ---
 telegram:

@@ -1,6 +1,6 @@
 .env
 credentials.json
-*.json
+service-account*.json
 venv/
 .venv/
 __pycache__/

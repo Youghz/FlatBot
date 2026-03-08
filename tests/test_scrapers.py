@@ -5,12 +5,11 @@ so they also serve as regression tests if the sites change their HTML.
 """
 
 import pathlib
-import pytest
-from unittest.mock import MagicMock
 
-from scrapers.kijiji import Listing
-from scrapers.centris import _parse_card, _build_urls
+import pytest
 from bs4 import BeautifulSoup
+
+from scrapers.centris import _build_urls, _parse_card
 
 FIXTURES = pathlib.Path(__file__).parent / "fixtures"
 
@@ -39,17 +38,13 @@ class TestCentrisFixture:
 
     def test_parse_card_returns_listing(self, cards):
         # Parse with relaxed config to get at least one result
-        relaxed_config = {
-            "criteria": {**CONFIG["criteria"], "price_min": 0, "price_max": 99999, "bedrooms_min": 0}
-        }
+        relaxed_config = {"criteria": {**CONFIG["criteria"], "price_min": 0, "price_max": 99999, "bedrooms_min": 0}}
         results = [_parse_card(c, relaxed_config) for c in cards]
         listings = [r for r in results if r is not None]
         assert len(listings) > 0, "No listings parsed from Centris cards"
 
     def test_parsed_listing_has_required_fields(self, cards):
-        relaxed_config = {
-            "criteria": {**CONFIG["criteria"], "price_min": 0, "price_max": 99999, "bedrooms_min": 0}
-        }
+        relaxed_config = {"criteria": {**CONFIG["criteria"], "price_min": 0, "price_max": 99999, "bedrooms_min": 0}}
         listing = None
         for card in cards:
             listing = _parse_card(card, relaxed_config)
@@ -62,12 +57,10 @@ class TestCentrisFixture:
         assert listing.source == "centris"
 
     def test_bedroom_count_populated(self, cards):
-        relaxed_config = {
-            "criteria": {**CONFIG["criteria"], "price_min": 0, "price_max": 99999, "bedrooms_min": 0}
-        }
+        relaxed_config = {"criteria": {**CONFIG["criteria"], "price_min": 0, "price_max": 99999, "bedrooms_min": 0}}
         listings = [_parse_card(c, relaxed_config) for c in cards]
-        listings = [l for l in listings if l is not None]
-        with_bedrooms = [l for l in listings if l.bedrooms > 0]
+        listings = [item for item in listings if item is not None]
+        with_bedrooms = [item for item in listings if item.bedrooms > 0]
         assert len(with_bedrooms) > 0, "No listings have bedroom count — div.cac parsing may be broken"
 
 

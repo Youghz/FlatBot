@@ -4,7 +4,6 @@ Centris renders listings server-side. We build a filtered URL using their
 path-based filter convention and parse the HTML cards directly.
 """
 
-import re
 import logging
 
 from bs4 import BeautifulSoup
@@ -45,9 +44,7 @@ def _build_urls(config: dict) -> list[str]:
     neighbourhoods = criteria["neighbourhoods"]
 
     # Deduplicate borough slugs (multiple neighbourhoods map to same borough)
-    slugs = list(dict.fromkeys(
-        BOROUGH_SLUGS[n] for n in neighbourhoods if n in BOROUGH_SLUGS
-    ))
+    slugs = list(dict.fromkeys(BOROUGH_SLUGS[n] for n in neighbourhoods if n in BOROUGH_SLUGS))
 
     urls = []
     for slug in slugs:

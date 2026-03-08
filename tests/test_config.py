@@ -1,7 +1,5 @@
 """Tests for config loading and env var resolution."""
 
-import os
-import pytest
 from main import _resolve_env_vars
 
 
