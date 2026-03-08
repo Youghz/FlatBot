@@ -1,6 +1,7 @@
 """Shared HTTP session with retry logic and rate limiting."""
 
 import logging
+import threading
 import time
 
 import requests
@@ -26,6 +27,7 @@ _HEADERS = {
 # Minimum delay between requests to the same site (seconds)
 _MIN_DELAY = 1.0
 _last_request_time: dict[str, float] = {}
+_rate_lock = threading.Lock()
 
 
 def create_session() -> requests.Session:
@@ -40,15 +42,20 @@ def create_session() -> requests.Session:
 def get(session: requests.Session, url: str, timeout: int = 30) -> requests.Response:
     """GET with rate limiting per domain."""
     from urllib.parse import urlparse
+
     domain = urlparse(url).netloc
 
-    now = time.monotonic()
-    last = _last_request_time.get(domain, 0)
-    wait = _MIN_DELAY - (now - last)
+    with _rate_lock:
+        now = time.monotonic()
+        last = _last_request_time.get(domain, 0)
+        wait = _MIN_DELAY - (now - last)
+
     if wait > 0:
         time.sleep(wait)
 
     resp = session.get(url, timeout=timeout)
-    _last_request_time[domain] = time.monotonic()
+
+    with _rate_lock:
+        _last_request_time[domain] = time.monotonic()
     resp.raise_for_status()
     return resp

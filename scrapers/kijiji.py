@@ -1,7 +1,7 @@
 """Scraper for Kijiji Montreal rental listings."""
 
-import re
 import logging
+import re
 from dataclasses import dataclass
 
 from bs4 import BeautifulSoup

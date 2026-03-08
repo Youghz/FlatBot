@@ -1,11 +1,10 @@
 """Google Sheets integration for storing and tracking listings."""
 
 import logging
-import re
 from datetime import datetime
 
-import gspread
 import google.auth
+import gspread
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +18,7 @@ def _sanitize_cell(value: str) -> str:
     if isinstance(value, str) and value and value[0] in ("=", "+", "-", "@"):
         return f"'{value}"
     return value
+
 
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",

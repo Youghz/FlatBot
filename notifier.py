@@ -37,10 +37,10 @@ def send_notification(new_listings: list, sheet_url: str, config: dict) -> None:
             f"{listing.price:.0f}$/mois | {listing.bedrooms} ch\n"
             f"{address}\n"
             f"{furnished} | {parking}\n"
-            f"<a href=\"{listing.url}\">Voir l'annonce</a> ({listing.source})\n\n"
+            f'<a href="{listing.url}">Voir l\'annonce</a> ({listing.source})\n\n'
         )
 
-    summary += f"<a href=\"{sheet_url}\">Voir le Google Sheet</a>"
+    summary += f'<a href="{sheet_url}">Voir le Google Sheet</a>'
 
     # Telegram has a 4096 char limit per message
     messages = []
@@ -65,4 +65,4 @@ def _send_message(url: str, chat_id: str, text: str) -> None:
         logger.info("Telegram notification sent")
     except requests.RequestException as e:
         logger.error(f"Telegram notification failed: {e}")
-        logger.error(f"Response: {resp.text[:200]}" if 'resp' in dir() else "")
+        logger.error(f"Response: {resp.text[:200]}" if "resp" in dir() else "")
