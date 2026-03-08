@@ -45,7 +45,7 @@ def test_google_sheets_read_write():
 def test_telegram_send_message():
     """Verify we can send a message to the Telegram chat."""
     token = TELEGRAM_BOT_TOKEN.strip()
-    chat_id = TELEGRAM_CHAT_ID.strip()
+    chat_id = int(TELEGRAM_CHAT_ID.strip())
     resp = requests.post(
         f"https://api.telegram.org/bot{token}/sendMessage",
         json={

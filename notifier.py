@@ -52,9 +52,9 @@ def send_notification(new_listings: list, sheet_url: str, config: dict) -> None:
         _send_message(url, chat_id, msg)
 
 
-def _send_message(url: str, chat_id: str, text: str) -> None:
+def _send_message(url: str, chat_id: str | int, text: str) -> None:
     payload = {
-        "chat_id": chat_id,
+        "chat_id": int(chat_id),
         "text": text,
         "parse_mode": "HTML",
         "disable_web_page_preview": True,
