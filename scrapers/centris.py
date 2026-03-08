@@ -9,7 +9,7 @@ import logging
 from bs4 import BeautifulSoup
 
 from http_client import create_session, get
-from scrapers.kijiji import Listing, _extract_bedrooms_from_text
+from scrapers.kijiji import Listing, _extract_bedrooms_from_text, _extract_move_in_date, _is_move_in_past
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +19,8 @@ CENTRIS_BASE = "https://www.centris.ca"
 BOROUGH_SLUGS = {
     "Villeray": "montreal-villeray-saint-michel-parc-extension",
     "Mile-Ex": "montreal-villeray-saint-michel-parc-extension",
+    "Mile-End": "montreal-le-plateau-mont-royal",
+    "Plateau": "montreal-le-plateau-mont-royal",
     "Petite-Patrie": "montreal-rosemont-la-petite-patrie",
     "Rosemont": "montreal-rosemont-la-petite-patrie",
     "Petite-Italie": "montreal-villeray-saint-michel-parc-extension",
@@ -29,11 +31,16 @@ NEIGHBOURHOOD_KEYWORDS = {
     "villeray": "Villeray",
     "mile-ex": "Mile-Ex",
     "mile ex": "Mile-Ex",
+    "mile-end": "Mile-End",
+    "mile end": "Mile-End",
     "petite-patrie": "Petite-Patrie",
     "petite patrie": "Petite-Patrie",
     "rosemont": "Rosemont",
     "petite-italie": "Petite-Italie",
     "petite italie": "Petite-Italie",
+    "plateau": "Plateau",
+    "plateau-mont-royal": "Plateau",
+    "plateau mont-royal": "Plateau",
     "ahuntsic": "Ahuntsic",
 }
 
@@ -125,6 +132,10 @@ def _parse_card(card, config: dict) -> Listing | None:
             neighbourhood = name
             break
 
+    move_in_date = _extract_move_in_date(specs_text)
+    if _is_move_in_past(move_in_date):
+        return None
+
     return Listing(
         source="centris",
         title=title,
@@ -138,6 +149,7 @@ def _parse_card(card, config: dict) -> Listing | None:
         description=specs_text[:300],
         image_url=image_url,
         listing_id=f"centris_{lid}",
+        move_in_date=move_in_date,
     )
 
 

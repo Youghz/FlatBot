@@ -93,3 +93,14 @@ class TestCentrisUrls:
         assert "montreal-villeray-saint-michel-parc-extension" in slugs
         assert "montreal-rosemont-la-petite-patrie" in slugs
         assert "montreal-ahuntsic-cartierville" in slugs
+
+    def test_build_urls_includes_plateau(self):
+        config = {
+            "criteria": {
+                **CONFIG["criteria"],
+                "neighbourhoods": ["Plateau", "Mile-End"],
+            }
+        }
+        urls = _build_urls(config)
+        slugs = [u.split("~")[-1] for u in urls]
+        assert "montreal-le-plateau-mont-royal" in slugs

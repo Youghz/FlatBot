@@ -6,6 +6,8 @@ from scrapers.kijiji import (
     Listing,
     _check_furnished_parking,
     _extract_bedrooms_from_text,
+    _extract_move_in_date,
+    _is_move_in_past,
     _matches_criteria,
     _parse_price,
 )
@@ -117,12 +119,64 @@ class TestMatchesCriteria:
         listing = self._make_listing(address="Old Rosemont, Montreal")
         assert _matches_criteria(listing, self.CONFIG) is True
 
-    def test_mile_end_variant(self):
+    def test_mile_ex_variant(self):
         config = {
             "criteria": {
                 **self.CONFIG["criteria"],
                 "neighbourhoods": ["Mile-Ex"],
             }
         }
+        listing = self._make_listing(address="Mile Ex, Montreal")
+        assert _matches_criteria(listing, config) is True
+
+    def test_plateau_match(self):
+        config = {
+            "criteria": {
+                **self.CONFIG["criteria"],
+                "neighbourhoods": ["Plateau"],
+            }
+        }
+        listing = self._make_listing(address="Plateau-Mont-Royal, Montreal")
+        assert _matches_criteria(listing, config) is True
+
+    def test_mile_end_match(self):
+        config = {
+            "criteria": {
+                **self.CONFIG["criteria"],
+                "neighbourhoods": ["Mile-End"],
+            }
+        }
         listing = self._make_listing(address="Mile End, Montreal")
         assert _matches_criteria(listing, config) is True
+
+
+class TestExtractMoveInDate:
+    @pytest.mark.parametrize(
+        "text,expected",
+        [
+            ("Disponible immédiatement", "immediate"),
+            ("Available immediately", "immediate"),
+            ("Disponible maintenant", "immediate"),
+            ("1er juillet 2026", "2026-07-01"),
+            ("15 août 2026", "2026-08-15"),
+            ("1 septembre 2026", "2026-09-01"),
+            ("15 June 2026", "2026-06-15"),
+            ("2026-07-01", "2026-07-01"),
+            ("01/09/2026", "2026-09-01"),
+            ("Bel appartement meublé", ""),
+        ],
+    )
+    def test_extract_move_in(self, text, expected):
+        assert _extract_move_in_date(text) == expected
+
+    def test_past_date_detected(self):
+        assert _is_move_in_past("2020-01-01") is True
+
+    def test_future_date_not_past(self):
+        assert _is_move_in_past("2099-01-01") is False
+
+    def test_immediate_not_past(self):
+        assert _is_move_in_past("immediate") is False
+
+    def test_empty_not_past(self):
+        assert _is_move_in_past("") is False
