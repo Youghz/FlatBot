@@ -1,0 +1,44 @@
+# =============================================================
+# Flat Research - Configuration
+# =============================================================
+
+# --- Criteres de recherche ---
+criteria:
+  city: "Montreal"
+  type: "location"           # location | achat
+  property_type:             # appartement, maison
+    - appartement
+    - maison
+  neighbourhoods:
+    - Villeray
+    - Mile-Ex
+    - Petite-Patrie
+    - Rosemont
+    - Petite-Italie
+    - Ahuntsic
+  bedrooms_min: 3
+  price_min: 2000
+  price_max: 3000
+  furnished: true
+  parking: true
+
+# --- Sources ---
+sources:
+  - kijiji
+  - centris
+
+# --- Google Sheets ---
+# Auth via Application Default Credentials (ADC) - no key file needed.
+# Run: gcloud auth application-default login
+google_sheets:
+  spreadsheet_name: "Flat Research - Montreal"
+  spreadsheet_id: "REDACTED_SPREADSHEET_ID"
+
+# --- Telegram ---
+telegram:
+  bot_token: "${TELEGRAM_BOT_TOKEN}"   # Loaded from .env
+  chat_id: "${TELEGRAM_CHAT_ID}"       # Loaded from .env
+
+# --- Scheduling ---
+schedule:
+  interval_minutes: 60

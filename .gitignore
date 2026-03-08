@@ -1,0 +1,9 @@
+.env
+credentials.json
+*.json
+venv/
+.venv/
+__pycache__/
+*.pyc
+flat-research.log
+.claude/
