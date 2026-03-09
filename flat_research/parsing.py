@@ -35,17 +35,6 @@ def extract_bedrooms_from_text(text: str) -> int:
     return 0
 
 
-def parse_price(text: str) -> float:
-    """Extract numeric price from text like '$2,500.00'."""
-    nums = re.findall(r"[\d,]+\.?\d*", text.replace(",", ""))
-    if nums:
-        try:
-            return float(nums[0])
-        except ValueError:
-            return 0.0
-    return 0.0
-
-
 def check_furnished_parking(text: str) -> tuple[bool, bool]:
     text_lower = text.lower()
     neg_patterns = ["non meublé", "non meuble", "non-meublé", "pas meublé", "unfurnished"]

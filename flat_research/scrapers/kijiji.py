@@ -143,13 +143,6 @@ def scrape(config: dict, session=None) -> list[Listing]:
             except (ValueError, TypeError):
                 bedrooms = extract_bedrooms_from_text(title)
 
-            # Image
-            image = item.get("image", "")
-            if isinstance(image, list):
-                image = image[0].get("contentUrl", "") if image else ""
-            elif isinstance(image, dict):
-                image = image.get("contentUrl", image.get("url", ""))
-
             # Search-page description (may be truncated)
             search_description = item.get("description", "")
 
@@ -183,7 +176,6 @@ def scrape(config: dict, session=None) -> list[Listing]:
                 furnished=furnished,
                 parking=parking,
                 description=(detail_text or search_description)[:300],
-                image_url=image,
                 listing_id=f"kijiji_{lid}",
                 move_in_date=move_in_date,
             )
