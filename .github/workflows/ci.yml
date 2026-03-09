@@ -10,7 +10,7 @@ env:
   PROJECT_ID: sandbox-hugo
   REGION: northamerica-northeast1
   JOB_NAME: flat-research
-  IMAGE: northamerica-northeast1-docker.pkg.dev/sandbox-hugo/flat-research/flat-research:latest
+  REGISTRY: northamerica-northeast1-docker.pkg.dev/sandbox-hugo/flat-research/flat-research
 
 jobs:
   lint-and-test:
@@ -75,13 +75,16 @@ jobs:
 
       - name: Build and push image
         run: |
-          docker build -t ${{ env.IMAGE }} .
-          docker push ${{ env.IMAGE }}
+          SHA_TAG="${{ env.REGISTRY }}:${{ github.sha }}"
+          LATEST_TAG="${{ env.REGISTRY }}:latest"
+          docker build -t "$SHA_TAG" -t "$LATEST_TAG" .
+          docker push "$SHA_TAG"
+          docker push "$LATEST_TAG"
 
       - name: Deploy to Cloud Run
         run: |
           gcloud run jobs update ${{ env.JOB_NAME }} \
-            --image="${{ env.IMAGE }}" \
+            --image="${{ env.REGISTRY }}:${{ github.sha }}" \
             --region="${{ env.REGION }}" \
             --project="${{ env.PROJECT_ID }}"
 
