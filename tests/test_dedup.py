@@ -2,8 +2,8 @@
 
 from unittest.mock import MagicMock, patch
 
-from scrapers.kijiji import Listing
-from sheets import HEADERS, add_listings
+from flat_research.models import Listing
+from flat_research.sheets import HEADERS, add_listings
 
 
 def _make_listing(**kwargs):
@@ -26,8 +26,8 @@ def _make_listing(**kwargs):
 
 
 class TestDeduplication:
-    @patch("sheets._get_or_create_spreadsheet")
-    @patch("sheets._get_client")
+    @patch("flat_research.sheets._get_or_create_spreadsheet")
+    @patch("flat_research.sheets._get_client")
     def test_skips_existing_ids(self, mock_client, mock_spreadsheet):
         mock_sheet = MagicMock()
         mock_sheet.row_count = 2
@@ -49,8 +49,8 @@ class TestDeduplication:
         assert len(rows) == 1
         assert rows[0][0] == "kijiji_002"
 
-    @patch("sheets._get_or_create_spreadsheet")
-    @patch("sheets._get_client")
+    @patch("flat_research.sheets._get_or_create_spreadsheet")
+    @patch("flat_research.sheets._get_client")
     def test_no_new_listings_skips_append(self, mock_client, mock_spreadsheet):
         mock_sheet = MagicMock()
         mock_sheet.row_count = 2
@@ -65,8 +65,8 @@ class TestDeduplication:
         assert len(new) == 0
         mock_sheet.append_rows.assert_not_called()
 
-    @patch("sheets._get_or_create_spreadsheet")
-    @patch("sheets._get_client")
+    @patch("flat_research.sheets._get_or_create_spreadsheet")
+    @patch("flat_research.sheets._get_client")
     def test_row_format_matches_headers(self, mock_client, mock_spreadsheet):
         mock_sheet = MagicMock()
         mock_sheet.row_count = 1

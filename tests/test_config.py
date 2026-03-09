@@ -1,6 +1,6 @@
 """Tests for config loading and env var resolution."""
 
-from main import _resolve_env_vars
+from flat_research.config import _resolve_env_vars
 
 
 class TestResolveEnvVars:

@@ -8,8 +8,9 @@ import logging
 
 from bs4 import BeautifulSoup
 
-from http_client import create_session, get
-from scrapers.kijiji import Listing, _extract_bedrooms_from_text, _extract_move_in_date, _is_move_in_past
+from flat_research.http_client import create_session, get
+from flat_research.models import Listing
+from flat_research.parsing import extract_bedrooms_from_text, extract_move_in_date, is_move_in_past
 
 logger = logging.getLogger(__name__)
 
@@ -115,7 +116,7 @@ def _parse_card(card, config: dict) -> Listing | None:
         except ValueError:
             bedrooms = 0
     else:
-        bedrooms = _extract_bedrooms_from_text(specs_text)
+        bedrooms = extract_bedrooms_from_text(specs_text)
     if bedrooms > 0 and bedrooms < criteria["bedrooms_min"]:
         return None
 
@@ -132,8 +133,8 @@ def _parse_card(card, config: dict) -> Listing | None:
             neighbourhood = name
             break
 
-    move_in_date = _extract_move_in_date(specs_text)
-    if _is_move_in_past(move_in_date):
+    move_in_date = extract_move_in_date(specs_text)
+    if is_move_in_past(move_in_date):
         return None
 
     return Listing(
