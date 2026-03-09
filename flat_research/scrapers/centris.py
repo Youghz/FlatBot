@@ -10,7 +10,12 @@ from bs4 import BeautifulSoup
 
 from flat_research.http_client import create_session, get
 from flat_research.models import Listing
-from flat_research.parsing import extract_bedrooms_from_text, extract_move_in_date, is_move_in_past
+from flat_research.parsing import (
+    check_furnished_parking,
+    extract_bedrooms_from_text,
+    extract_move_in_date,
+    is_move_in_past,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -120,10 +125,8 @@ def _parse_card(card, config: dict) -> Listing | None:
     if bedrooms > 0 and bedrooms < criteria["bedrooms_min"]:
         return None
 
-    # Furnished / parking
-    text_lower = specs_text.lower()
-    furnished = any(w in text_lower for w in ["meublé", "meuble", "furnished"])
-    parking = any(w in text_lower for w in ["parking", "stationnement", "garage"])
+    # Furnished / parking (use shared detection with negation handling)
+    furnished, parking = check_furnished_parking(specs_text)
 
     # Neighbourhood detection
     neighbourhood = ""

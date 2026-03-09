@@ -70,15 +70,22 @@ class TestKijjiFixture:
         html = (FIXTURES / "kijiji_search.html").read_text()
         return BeautifulSoup(html, "html.parser")
 
-    def test_cards_found(self, soup):
-        cards = soup.select("[data-testid='listing-card']")
-        if not cards:
-            cards = soup.select("section ul > li")
-        assert len(cards) > 0, "No Kijiji cards found in fixture — HTML structure may have changed"
+    def test_jsonld_present(self, soup):
+        script = soup.find("script", type="application/ld+json")
+        assert script is not None, "No JSON-LD found in Kijiji fixture — page structure may have changed"
 
-    def test_listing_links_present(self, soup):
-        links = soup.select("a[href*='/v-']")
-        assert len(links) > 0, "No listing links found in Kijiji fixture"
+    def test_jsonld_has_listings(self, soup):
+        import json
+
+        script = soup.find("script", type="application/ld+json")
+        if script:
+            data = json.loads(script.string)
+            items = data.get("itemListElement", [])
+            assert len(items) > 0, "JSON-LD ItemList is empty"
+        else:
+            # Fallback: check for listing links (older fixture)
+            links = soup.select("a[href*='/v-']")
+            assert len(links) > 0, "No listing links found in Kijiji fixture"
 
 
 class TestCentrisUrls:
