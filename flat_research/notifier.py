@@ -59,10 +59,12 @@ def _send_message(url: str, chat_id: str | int, text: str) -> None:
         "parse_mode": "HTML",
         "disable_web_page_preview": True,
     }
+    resp = None
     try:
         resp = requests.post(url, json=payload, timeout=10)
         resp.raise_for_status()
         logger.info("Telegram notification sent")
     except requests.RequestException as e:
         logger.error(f"Telegram notification failed: {e}")
-        logger.error(f"Response: {resp.text[:200]}" if "resp" in dir() else "")
+        if resp is not None:
+            logger.error(f"Response: {resp.text[:200]}")
