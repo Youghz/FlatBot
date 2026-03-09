@@ -106,5 +106,5 @@ jobs:
         run: |
           gcloud artifacts docker images list "${{ env.REGISTRY }}" \
             --sort-by=~UPDATE_TIME --format="value(VERSION)" \
-            | tail -n +6 \
+            | tail -n +2 \
             | xargs -rI {} gcloud artifacts docker images delete "${{ env.REGISTRY }}@{}" --quiet --delete-tags
