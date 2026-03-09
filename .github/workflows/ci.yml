@@ -101,3 +101,10 @@ jobs:
             --project="${{ env.PROJECT_ID }}" \
             --args="--check" \
             --wait
+
+      - name: Cleanup old images (keep last 5)
+        run: |
+          gcloud artifacts docker images list "${{ env.REGISTRY }}" \
+            --sort-by=~UPDATE_TIME --format="value(VERSION)" \
+            | tail -n +6 \
+            | xargs -rI {} gcloud artifacts docker images delete "${{ env.REGISTRY }}@{}" --quiet --delete-tags
