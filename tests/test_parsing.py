@@ -2,14 +2,14 @@
 
 import pytest
 
-from scrapers.kijiji import (
-    Listing,
-    _check_furnished_parking,
-    _extract_bedrooms_from_text,
-    _extract_move_in_date,
-    _is_move_in_past,
-    _matches_criteria,
-    _parse_price,
+from flat_research.models import Listing
+from flat_research.parsing import (
+    check_furnished_parking,
+    extract_bedrooms_from_text,
+    extract_move_in_date,
+    is_move_in_past,
+    matches_criteria,
+    parse_price,
 )
 
 
@@ -38,7 +38,7 @@ class TestExtractBedrooms:
         ],
     )
     def test_bedroom_extraction(self, text, expected):
-        assert _extract_bedrooms_from_text(text) == expected
+        assert extract_bedrooms_from_text(text) == expected
 
 
 class TestParsePrice:
@@ -53,7 +53,7 @@ class TestParsePrice:
         ],
     )
     def test_price_parsing(self, text, expected):
-        assert _parse_price(text) == expected
+        assert parse_price(text) == expected
 
 
 class TestFurnishedParking:
@@ -68,7 +68,7 @@ class TestFurnishedParking:
         ],
     )
     def test_furnished_parking(self, text, furnished, parking):
-        f, p = _check_furnished_parking(text)
+        f, p = check_furnished_parking(text)
         assert f == furnished
         assert p == parking
 
@@ -97,27 +97,27 @@ class TestMatchesCriteria:
 
     def test_matches(self):
         listing = self._make_listing()
-        assert _matches_criteria(listing, self.CONFIG) is True
+        assert matches_criteria(listing, self.CONFIG) is True
 
     def test_price_too_low(self):
         listing = self._make_listing(price=1500)
-        assert _matches_criteria(listing, self.CONFIG) is False
+        assert matches_criteria(listing, self.CONFIG) is False
 
     def test_price_too_high(self):
         listing = self._make_listing(price=3500)
-        assert _matches_criteria(listing, self.CONFIG) is False
+        assert matches_criteria(listing, self.CONFIG) is False
 
     def test_not_enough_bedrooms(self):
         listing = self._make_listing(bedrooms=2)
-        assert _matches_criteria(listing, self.CONFIG) is False
+        assert matches_criteria(listing, self.CONFIG) is False
 
     def test_wrong_neighbourhood(self):
         listing = self._make_listing(address="Westmount, Montreal")
-        assert _matches_criteria(listing, self.CONFIG) is False
+        assert matches_criteria(listing, self.CONFIG) is False
 
     def test_rosemont_match(self):
         listing = self._make_listing(address="Old Rosemont, Montreal")
-        assert _matches_criteria(listing, self.CONFIG) is True
+        assert matches_criteria(listing, self.CONFIG) is True
 
     def test_mile_ex_variant(self):
         config = {
@@ -127,7 +127,7 @@ class TestMatchesCriteria:
             }
         }
         listing = self._make_listing(address="Mile Ex, Montreal")
-        assert _matches_criteria(listing, config) is True
+        assert matches_criteria(listing, config) is True
 
     def test_plateau_match(self):
         config = {
@@ -137,7 +137,7 @@ class TestMatchesCriteria:
             }
         }
         listing = self._make_listing(address="Plateau-Mont-Royal, Montreal")
-        assert _matches_criteria(listing, config) is True
+        assert matches_criteria(listing, config) is True
 
     def test_mile_end_match(self):
         config = {
@@ -147,7 +147,7 @@ class TestMatchesCriteria:
             }
         }
         listing = self._make_listing(address="Mile End, Montreal")
-        assert _matches_criteria(listing, config) is True
+        assert matches_criteria(listing, config) is True
 
 
 class TestExtractMoveInDate:
@@ -167,16 +167,16 @@ class TestExtractMoveInDate:
         ],
     )
     def test_extract_move_in(self, text, expected):
-        assert _extract_move_in_date(text) == expected
+        assert extract_move_in_date(text) == expected
 
     def test_past_date_detected(self):
-        assert _is_move_in_past("2020-01-01") is True
+        assert is_move_in_past("2020-01-01") is True
 
     def test_future_date_not_past(self):
-        assert _is_move_in_past("2099-01-01") is False
+        assert is_move_in_past("2099-01-01") is False
 
     def test_immediate_not_past(self):
-        assert _is_move_in_past("immediate") is False
+        assert is_move_in_past("immediate") is False
 
     def test_empty_not_past(self):
-        assert _is_move_in_past("") is False
+        assert is_move_in_past("") is False

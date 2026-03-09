@@ -2,8 +2,8 @@
 
 from unittest.mock import patch
 
-from notifier import send_notification
-from scrapers.kijiji import Listing
+from flat_research.models import Listing
+from flat_research.notifier import send_notification
 
 
 def _make_listing(**kwargs):
@@ -34,7 +34,7 @@ CONFIG = {
 
 
 class TestNotifierFormatting:
-    @patch("notifier.requests.post")
+    @patch("flat_research.notifier.requests.post")
     def test_sends_message_with_listing_info(self, mock_post):
         mock_post.return_value.status_code = 200
         mock_post.return_value.raise_for_status = lambda: None
@@ -49,18 +49,18 @@ class TestNotifierFormatting:
         assert "Villeray" in payload["text"]
         assert payload["parse_mode"] == "HTML"
 
-    @patch("notifier.requests.post")
+    @patch("flat_research.notifier.requests.post")
     def test_skips_when_no_token(self, mock_post):
         config = {"telegram": {"bot_token": "", "chat_id": "-123"}}
         send_notification([_make_listing()], "https://sheet", config)
         mock_post.assert_not_called()
 
-    @patch("notifier.requests.post")
+    @patch("flat_research.notifier.requests.post")
     def test_skips_when_no_listings(self, mock_post):
         send_notification([], "https://sheet", CONFIG)
         mock_post.assert_not_called()
 
-    @patch("notifier.requests.post")
+    @patch("flat_research.notifier.requests.post")
     def test_escapes_html_in_title(self, mock_post):
         mock_post.return_value.status_code = 200
         mock_post.return_value.raise_for_status = lambda: None
@@ -72,7 +72,7 @@ class TestNotifierFormatting:
         assert "<script>" not in payload["text"]
         assert "&lt;script&gt;" in payload["text"]
 
-    @patch("notifier.requests.post")
+    @patch("flat_research.notifier.requests.post")
     def test_chunks_long_messages(self, mock_post):
         mock_post.return_value.status_code = 200
         mock_post.return_value.raise_for_status = lambda: None

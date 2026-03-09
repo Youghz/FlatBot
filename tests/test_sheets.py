@@ -2,7 +2,7 @@
 
 import pytest
 
-from sheets import _sanitize_cell
+from flat_research.sheets import _sanitize_cell
 
 
 class TestSanitizeCell:

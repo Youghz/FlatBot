@@ -9,7 +9,7 @@ import pathlib
 import pytest
 from bs4 import BeautifulSoup
 
-from scrapers.centris import _build_urls, _parse_card
+from flat_research.scrapers.centris import _build_urls, _parse_card
 
 FIXTURES = pathlib.Path(__file__).parent / "fixtures"
 

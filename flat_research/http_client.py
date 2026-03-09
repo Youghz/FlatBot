@@ -3,6 +3,7 @@
 import logging
 import threading
 import time
+from urllib.parse import urlparse
 
 import requests
 from requests.adapters import HTTPAdapter, Retry
@@ -41,8 +42,6 @@ def create_session() -> requests.Session:
 
 def get(session: requests.Session, url: str, timeout: int = 30) -> requests.Response:
     """GET with rate limiting per domain."""
-    from urllib.parse import urlparse
-
     domain = urlparse(url).netloc
 
     with _rate_lock:
