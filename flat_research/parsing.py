@@ -79,6 +79,19 @@ MONTH_FR = {
     "decembre": 12,
 }
 
+MONTH_FR_ABBREV = {
+    "janv": 1,
+    "févr": 2,
+    "fevr": 2,
+    "avr": 4,
+    "juil": 7,
+    "sept": 9,
+    "oct": 10,
+    "nov": 11,
+    "déc": 12,
+    "dec": 12,
+}
+
 MONTH_EN = {
     "january": 1,
     "february": 2,
@@ -94,34 +107,96 @@ MONTH_EN = {
     "december": 12,
 }
 
+MONTH_EN_ABBREV = {
+    "jan": 1,
+    "feb": 2,
+    "mar": 3,
+    "apr": 4,
+    "jun": 6,
+    "jul": 7,
+    "aug": 8,
+    "sep": 9,
+    "oct": 10,
+    "nov": 11,
+    "dec": 12,
+}
+
+# Merge all month names — full names first (longer match wins)
+ALL_MONTHS: dict[str, int] = {**MONTH_FR_ABBREV, **MONTH_EN_ABBREV, **MONTH_FR, **MONTH_EN}
+
+# Pre-compiled patterns (built once at import time)
+_MONTH_PATTERN = "|".join(sorted(ALL_MONTHS.keys(), key=len, reverse=True))
+_RE_DAY_MONTH_YEAR = re.compile(
+    rf"(\d{{1,2}})\s*(?:er|st|nd|rd|th)?\s*({_MONTH_PATTERN})\.?\s*(\d{{4}})?", re.IGNORECASE
+)
+_RE_MONTH_DAY_YEAR = re.compile(
+    rf"({_MONTH_PATTERN})\.?\s+(\d{{1,2}})(?:st|nd|rd|th)?\s*,?\s*(\d{{4}})?", re.IGNORECASE
+)
+_RE_MONTH_YEAR = re.compile(rf"({_MONTH_PATTERN})\.?\s+(\d{{4}})", re.IGNORECASE)
+_RE_ISO_DATE = re.compile(r"(\d{4})-(\d{2})-(\d{2})")
+_RE_DMY_SLASH = re.compile(r"(\d{1,2})/(\d{1,2})/(\d{4})")
+_RE_IMMEDIATE = re.compile(
+    r"imm[ée]diat|immediate(?:ly)?|disponible\s+maintenant|available\s+now|d[èe]s\s+maintenant",
+    re.IGNORECASE,
+)
+
 
 def extract_move_in_date(text: str) -> str:
     """Extract move-in date from text. Returns YYYY-MM-DD, 'immediate', or ''."""
-    text_lower = text.lower()
-
     # Immediate availability
-    if any(w in text_lower for w in ["immédiat", "immediat", "immediate", "disponible maintenant", "available now"]):
+    if _RE_IMMEDIATE.search(text):
         return "immediate"
 
-    # Try "1er juillet 2025", "15 août 2025", "1 septembre"
-    all_months = {**MONTH_FR, **MONTH_EN}
-    month_pattern = "|".join(all_months.keys())
-    match = re.search(rf"(\d{{1,2}})\s*(?:er)?\s*({month_pattern})\s*(\d{{4}})?", text_lower)
+    # Try "1er juillet 2025", "15 août 2025", "1 sept. 2025"
+    match = _RE_DAY_MONTH_YEAR.search(text)
     if match:
         day = int(match.group(1))
-        month = all_months[match.group(2)]
-        year = int(match.group(3)) if match.group(3) else date.today().year
+        month_name = match.group(2).lower().rstrip(".")
+        month = ALL_MONTHS.get(month_name)
+        if month:
+            year = int(match.group(3)) if match.group(3) else date.today().year
+            try:
+                return date(year, month, day).isoformat()
+            except ValueError:
+                pass
+
+    # Try "juillet 2025", "July 2025" (no day → assume 1st)
+    # Must check before month-day-year to avoid "juillet 2026" matching as day=20
+    month_year = _RE_MONTH_YEAR.search(text)
+    if month_year:
+        month_name = month_year.group(1).lower().rstrip(".")
+        month = ALL_MONTHS.get(month_name)
+        if month:
+            year = int(month_year.group(2))
+            try:
+                return date(year, month, 1).isoformat()
+            except ValueError:
+                pass
+
+    # Try "August 1st 2025", "May 31, 2025" (English month-day-year order)
+    match_mdy = _RE_MONTH_DAY_YEAR.search(text)
+    if match_mdy:
+        month_name = match_mdy.group(1).lower().rstrip(".")
+        day = int(match_mdy.group(2))
+        month = ALL_MONTHS.get(month_name)
+        if month:
+            year = int(match_mdy.group(3)) if match_mdy.group(3) else date.today().year
+            try:
+                return date(year, month, day).isoformat()
+            except ValueError:
+                pass
+
+    # Try YYYY-MM-DD
+    iso_match = _RE_ISO_DATE.search(text)
+    if iso_match:
         try:
-            return date(year, month, day).isoformat()
+            d = date(int(iso_match.group(1)), int(iso_match.group(2)), int(iso_match.group(3)))
+            return d.isoformat()
         except ValueError:
             pass
 
-    # Try YYYY-MM-DD or DD/MM/YYYY
-    iso_match = re.search(r"(\d{4})-(\d{2})-(\d{2})", text)
-    if iso_match:
-        return iso_match.group(0)
-
-    dmy_match = re.search(r"(\d{1,2})/(\d{1,2})/(\d{4})", text)
+    # Try DD/MM/YYYY
+    dmy_match = _RE_DMY_SLASH.search(text)
     if dmy_match:
         day, month, year = int(dmy_match.group(1)), int(dmy_match.group(2)), int(dmy_match.group(3))
         try:

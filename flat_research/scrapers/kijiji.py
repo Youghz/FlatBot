@@ -1,5 +1,10 @@
-"""Scraper for Kijiji Montreal rental listings."""
+"""Scraper for Kijiji Montreal rental listings.
 
+Parses JSON-LD from search results (stable structured data),
+then fetches detail pages for move-in date / furnished / parking info.
+"""
+
+import json
 import logging
 import re
 
@@ -13,16 +18,68 @@ from flat_research.parsing import (
     extract_move_in_date,
     is_move_in_past,
     matches_criteria,
-    parse_price,
 )
 
 logger = logging.getLogger(__name__)
 
 KIJIJI_BASE = "https://www.kijiji.ca"
-
-# Kijiji category IDs for Montreal real estate rentals
-# Long-term rentals in Greater Montreal
 CATEGORY_PATH = "/b-appartement-condo/ville-de-montreal/c37l1700281"
+
+
+def _parse_jsonld_listings(soup: BeautifulSoup) -> list[dict]:
+    """Extract listings from the JSON-LD ItemList on the search page."""
+    script = soup.find("script", type="application/ld+json")
+    if not script:
+        logger.warning("No JSON-LD found on Kijiji search page")
+        return []
+
+    try:
+        data = json.loads(script.string)
+    except (json.JSONDecodeError, TypeError) as e:
+        logger.warning(f"Failed to parse Kijiji JSON-LD: {e}")
+        return []
+
+    if data.get("@type") != "ItemList":
+        logger.warning(f"Unexpected JSON-LD type: {data.get('@type')}")
+        return []
+
+    items = []
+    for element in data.get("itemListElement", []):
+        item = element.get("item", element)
+        if item.get("@type") in ("SingleFamilyResidence", "Apartment", "House"):
+            items.append(item)
+
+    return items
+
+
+def _extract_listing_id(url: str) -> str:
+    """Extract numeric ID from a Kijiji listing URL."""
+    match = re.search(r"/(\d+)$", url)
+    return match.group(1) if match else ""
+
+
+def _fetch_detail_description(session, url: str) -> str:
+    """Fetch a Kijiji detail page and return the full description text."""
+    try:
+        resp = get(session, url)
+        soup = BeautifulSoup(resp.text, "html.parser")
+
+        # Try JSON-LD on detail page (has full description)
+        script = soup.find("script", type="application/ld+json")
+        if script:
+            try:
+                data = json.loads(script.string)
+                desc = data.get("description", "")
+                if desc:
+                    return desc
+            except (json.JSONDecodeError, TypeError):
+                pass
+
+        # Fallback: get all visible text
+        return soup.get_text(" ", strip=True)[:2000]
+    except Exception as e:
+        logger.debug(f"Could not fetch Kijiji detail {url}: {e}")
+        return ""
 
 
 def scrape(config: dict, session=None) -> list[Listing]:
@@ -35,9 +92,11 @@ def scrape(config: dict, session=None) -> list[Listing]:
         "re": criteria["price_max"],
         "numberbedrooms": criteria["bedrooms_min"],
     }
-    if criteria.get("furnished"):
+    search_furnished = criteria.get("furnished", False)
+    search_parking = criteria.get("parking", False)
+    if search_furnished:
         params["furnished"] = 1
-    if criteria.get("parking"):
+    if search_parking:
         params["numberparkingspots"] = 1
 
     query_string = "&".join(f"{k}={v}" for k, v in params.items())
@@ -54,80 +113,77 @@ def scrape(config: dict, session=None) -> list[Listing]:
         return listings
 
     soup = BeautifulSoup(resp.text, "html.parser")
+    items = _parse_jsonld_listings(soup)
+    logger.info(f"Found {len(items)} Kijiji listings via JSON-LD")
 
-    # Kijiji uses data-testid or specific class patterns for listing cards
-    # Try multiple selectors as Kijiji changes their HTML frequently
-    cards = soup.select("[data-testid='listing-card']")
-    if not cards:
-        cards = soup.select("div.search-item, li.regular-ad, div[data-listing-id]")
-    if not cards:
-        # Fallback: look for any links that look like listing URLs
-        cards = soup.select("section ul li")
-
-    logger.info(f"Found {len(cards)} raw Kijiji cards")
-
-    for card in cards:
+    for item in items:
         try:
-            # Extract listing ID
-            lid = card.get("data-listing-id", "") or card.get("data-ad-id", "")
+            item_url = item.get("url", "")
+            lid = _extract_listing_id(item_url)
             if not lid:
-                link_el = card.select_one("a[href*='/v-']")
-                if link_el:
-                    href = link_el.get("href", "")
-                    match = re.search(r"/(\d+)$", href)
-                    lid = match.group(1) if match else ""
-                if not lid:
-                    continue
+                continue
 
-            # Title
-            title_el = card.select_one("a[class*='title'], h3, [data-testid='listing-title']")
-            title = title_el.get_text(strip=True) if title_el else ""
+            title = item.get("name", "")
 
-            # Price
-            price_el = card.select_one("[class*='price'], [data-testid='listing-price']")
-            price_text = price_el.get_text(strip=True) if price_el else "0"
-            price = parse_price(price_text)
+            # Price from offers
+            offers = item.get("offers", {})
+            try:
+                price = float(offers.get("price", 0))
+            except (ValueError, TypeError):
+                price = 0.0
 
-            # URL
-            link_el = card.select_one("a[href*='/v-']") or card.select_one("a")
-            href = link_el.get("href", "") if link_el else ""
-            listing_url = href if href.startswith("http") else f"{KIJIJI_BASE}{href}"
+            # Address
+            address = item.get("address", "")
+            if isinstance(address, dict):
+                address = address.get("streetAddress", "") or address.get("addressLocality", "")
+
+            # Bedrooms
+            try:
+                bedrooms = int(item.get("numberOfBedrooms", 0))
+            except (ValueError, TypeError):
+                bedrooms = extract_bedrooms_from_text(title)
 
             # Image
-            img_el = card.select_one("img")
-            image_url = img_el.get("src", "") if img_el else ""
+            image = item.get("image", "")
+            if isinstance(image, list):
+                image = image[0].get("contentUrl", "") if image else ""
+            elif isinstance(image, dict):
+                image = image.get("contentUrl", image.get("url", ""))
 
-            # Address / location
-            loc_el = card.select_one("[class*='location'], [data-testid='listing-location']")
-            address = loc_el.get_text(strip=True) if loc_el else ""
+            # Search-page description (may be truncated)
+            search_description = item.get("description", "")
 
-            # Description snippet
-            desc_el = card.select_one("[class*='description'], [data-testid='listing-description']")
-            description = desc_el.get_text(strip=True) if desc_el else ""
+            # Fetch detail page for full description
+            detail_text = _fetch_detail_description(session, item_url)
+            full_text = f"{title} {detail_text}" if detail_text else f"{title} {search_description}"
 
-            full_text = f"{title} {description} {address}"
-
-            # Bedrooms - handles "3 chambres", "5½", "5 1/2", etc.
-            bedrooms = extract_bedrooms_from_text(full_text)
-
+            # Detect furnished/parking from full text
             furnished, parking = check_furnished_parking(full_text)
-            move_in_date = extract_move_in_date(full_text)
+            # If search filters require furnished/parking and text detection fails,
+            # trust the Kijiji search filter
+            if search_furnished and not furnished:
+                furnished = True
+            if search_parking and not parking:
+                parking = True
 
+            # Move-in date from full text
+            move_in_date = extract_move_in_date(full_text)
             if is_move_in_past(move_in_date):
+                logger.debug(f"Skipping past move-in: {title} ({move_in_date})")
                 continue
 
             listing = Listing(
                 source="kijiji",
                 title=title,
                 price=price,
-                url=listing_url,
+                url=item_url,
                 address=address,
                 neighbourhood="",
                 bedrooms=bedrooms,
                 furnished=furnished,
                 parking=parking,
-                description=description[:300],
-                image_url=image_url,
+                description=(detail_text or search_description)[:300],
+                image_url=image,
                 listing_id=f"kijiji_{lid}",
                 move_in_date=move_in_date,
             )
@@ -136,7 +192,7 @@ def scrape(config: dict, session=None) -> list[Listing]:
                 listings.append(listing)
 
         except Exception as e:
-            logger.warning(f"Error parsing Kijiji card: {e}")
+            logger.warning(f"Error parsing Kijiji item: {e}")
             continue
 
     logger.info(f"Kijiji: {len(listings)} listings match criteria")
