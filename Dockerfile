@@ -7,7 +7,7 @@ COPY --from=ghcr.io/astral-sh/uv:0.7 /uv /usr/local/bin/uv
 COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev
 
-COPY config.yaml main.py sheets.py notifier.py http_client.py ./
-COPY scrapers/ scrapers/
+COPY config.yaml ./
+COPY flat_research/ flat_research/
 
-ENTRYPOINT ["uv", "run", "python", "main.py"]
+ENTRYPOINT ["uv", "run", "python", "-m", "flat_research"]

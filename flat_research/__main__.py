@@ -2,25 +2,25 @@
 """Flat Research - Montreal apartment/house finder.
 
 Usage:
-    python main.py              # Run once
-    python main.py --schedule   # Run every hour (configurable)
+    python -m flat_research              # Run once
+    python -m flat_research --schedule   # Run every hour (configurable)
+    python -m flat_research --check      # Health check
 """
 
 import argparse
 import logging
 import os
-import re
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-import yaml
-from dotenv import load_dotenv
+import requests
 
-from http_client import create_session
-from notifier import send_notification
-from scrapers import centris, kijiji
-from sheets import add_listings
+from flat_research.config import load_config
+from flat_research.http_client import create_session, get
+from flat_research.notifier import send_notification
+from flat_research.scrapers import SCRAPERS
+from flat_research.sheets import _get_client, _get_or_create_spreadsheet, add_listings
 
 
 def _setup_logging():
@@ -55,28 +55,6 @@ _setup_logging()
 logger = logging.getLogger(__name__)
 
 
-def _resolve_env_vars(obj):
-    """Recursively replace ${VAR} placeholders with env var values."""
-    if isinstance(obj, str):
-        return re.sub(
-            r"\$\{(\w+)\}",
-            lambda m: os.environ.get(m.group(1), m.group(0)),
-            obj,
-        )
-    if isinstance(obj, dict):
-        return {k: _resolve_env_vars(v) for k, v in obj.items()}
-    if isinstance(obj, list):
-        return [_resolve_env_vars(i) for i in obj]
-    return obj
-
-
-def load_config(path: str = "config.yaml") -> dict:
-    load_dotenv()
-    with open(path) as f:
-        config = yaml.safe_load(f)
-    return _resolve_env_vars(config)
-
-
 def run_once(config: dict) -> bool:
     """Run a single scraping cycle. Returns True on success, False on critical failure."""
     logger.info("=== Starting scraping cycle ===")
@@ -86,15 +64,14 @@ def run_once(config: dict) -> bool:
     timeout_s = config.get("schedule", {}).get("timeout_seconds", 240)
 
     # Each scraper gets its own session (connection pooling per site)
-    scrapers = {}
-    if "kijiji" in sources:
-        scrapers["kijiji"] = (kijiji.scrape, create_session())
-    if "centris" in sources:
-        scrapers["centris"] = (centris.scrape, create_session())
+    active_scrapers = {}
+    for name in sources:
+        if name in SCRAPERS:
+            active_scrapers[name] = (SCRAPERS[name], create_session())
 
     # Run scrapers in parallel with timeout
-    with ThreadPoolExecutor(max_workers=len(scrapers)) as pool:
-        futures = {pool.submit(fn, config, session): name for name, (fn, session) in scrapers.items()}
+    with ThreadPoolExecutor(max_workers=len(active_scrapers)) as pool:
+        futures = {pool.submit(fn, config, session): name for name, (fn, session) in active_scrapers.items()}
         for future in as_completed(futures, timeout=timeout_s):
             name = futures[future]
             try:
@@ -142,8 +119,6 @@ def run_check(config: dict) -> bool:
     # 1. Kijiji
     try:
         session = create_session()
-        from http_client import get
-
         resp = get(session, "https://www.kijiji.ca/b-appartement-condo/ville-de-montreal/c37l1700281")
         checks["Kijiji"] = resp.status_code == 200
     except Exception as e:
@@ -153,8 +128,6 @@ def run_check(config: dict) -> bool:
     # 2. Centris
     try:
         session = create_session()
-        from http_client import get
-
         resp = get(session, "https://www.centris.ca/fr/propriete~a-louer~montreal-rosemont-la-petite-patrie")
         checks["Centris"] = resp.status_code == 200
     except Exception as e:
@@ -163,8 +136,6 @@ def run_check(config: dict) -> bool:
 
     # 3. Google Sheets
     try:
-        from sheets import _get_client, _get_or_create_spreadsheet
-
         client = _get_client(config)
         spreadsheet = _get_or_create_spreadsheet(client, config)
         sheet = spreadsheet.sheet1
@@ -176,13 +147,11 @@ def run_check(config: dict) -> bool:
 
     # 4. Telegram
     try:
-        import requests as req
-
         token = config["telegram"]["bot_token"]
         chat_id = config["telegram"]["chat_id"]
         if not token or "${" in token:
             raise ValueError("bot_token not configured")
-        resp = req.post(
+        resp = requests.post(
             f"https://api.telegram.org/bot{token}/sendMessage",
             json={"chat_id": int(chat_id), "text": "[check] Flat Research health check OK"},
             timeout=10,
