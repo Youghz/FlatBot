@@ -4,11 +4,6 @@
 
 # --- Criteres de recherche ---
 criteria:
-  city: "Montreal"
-  type: "location"           # location | achat
-  property_type:             # appartement, maison
-    - appartement
-    - maison
   neighbourhoods:
     - Villeray
     - Mile-Ex

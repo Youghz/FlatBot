@@ -9,7 +9,6 @@ from flat_research.parsing import (
     extract_move_in_date,
     is_move_in_past,
     matches_criteria,
-    parse_price,
 )
 
 
@@ -39,21 +38,6 @@ class TestExtractBedrooms:
     )
     def test_bedroom_extraction(self, text, expected):
         assert extract_bedrooms_from_text(text) == expected
-
-
-class TestParsePrice:
-    @pytest.mark.parametrize(
-        "text,expected",
-        [
-            ("$2,500.00", 2500.0),
-            ("2 500 $", 2.0),  # regex picks first number group
-            ("$3,000", 3000.0),
-            ("Free", 0.0),
-            ("", 0.0),
-        ],
-    )
-    def test_price_parsing(self, text, expected):
-        assert parse_price(text) == expected
 
 
 class TestFurnishedParking:

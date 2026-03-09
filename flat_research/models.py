@@ -15,6 +15,5 @@ class Listing:
     furnished: bool = False
     parking: bool = False
     description: str = ""
-    image_url: str = ""
     listing_id: str = ""
     move_in_date: str = ""  # YYYY-MM-DD or "immediate" or ""
