@@ -82,17 +82,6 @@ def _get_or_create_spreadsheet(client: gspread.Client, config: dict) -> gspread.
     return spreadsheet
 
 
-def get_existing_ids(config: dict) -> set[str]:
-    """Return all listing IDs already in the sheet."""
-    client = _get_client(config)
-    spreadsheet = _get_or_create_spreadsheet(client, config)
-    sheet = spreadsheet.sheet1
-
-    all_values = sheet.col_values(1)  # Column A = IDs
-    # Skip header
-    return set(all_values[1:]) if len(all_values) > 1 else set()
-
-
 def add_listings(listings: list, config: dict) -> tuple[list, str]:
     """Add new listings to the Google Sheet.
 

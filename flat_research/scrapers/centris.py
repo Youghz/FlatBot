@@ -106,10 +106,6 @@ def _parse_card(card, config: dict) -> Listing | None:
     if not address:
         address = title
 
-    # Image
-    img_el = card.select_one("img[itemprop='image']") or card.select_one("img")
-    image_url = img_el.get("src", "") if img_el else ""
-
     # Specs from card text
     specs_text = card.get_text(" ", strip=True)
 
@@ -151,7 +147,6 @@ def _parse_card(card, config: dict) -> Listing | None:
         furnished=furnished,
         parking=parking,
         description=specs_text[:300],
-        image_url=image_url,
         listing_id=f"centris_{lid}",
         move_in_date=move_in_date,
     )

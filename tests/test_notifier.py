@@ -18,7 +18,6 @@ def _make_listing(**kwargs):
         "furnished": True,
         "parking": True,
         "description": "Grand logement lumineux",
-        "image_url": "",
         "listing_id": "kijiji_123",
     }
     defaults.update(kwargs)
