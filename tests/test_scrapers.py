@@ -158,6 +158,16 @@ class TestRentalsFixture:
         assert with_parking.parking is True
         assert without_parking.parking is False
 
+    def test_furnished_from_api_field(self, nodes):
+        furnished = _node_to_listing(nodes[0])
+        not_furnished = _node_to_listing(nodes[1])
+        assert furnished.furnished is True
+        assert not_furnished.furnished is False
+
+    def test_description_populated(self, nodes):
+        listing = _node_to_listing(nodes[0])
+        assert "meublé" in listing.description.lower() or "Rosemont" in listing.description
+
 
 class TestRentalsFilters:
     def test_build_filters_basic(self):

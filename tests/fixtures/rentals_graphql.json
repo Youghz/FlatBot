@@ -14,6 +14,9 @@
             "rentRange": [2450.0, 2450.0],
             "bedsRange": [3.0, 3.0],
             "type": "condo",
+            "furnished": "yes",
+            "amenities": [["unit-features", "balcony"], ["building-features", "garage"]],
+            "description": {"plain": "Bel appartement meublé avec stationnement inclus dans Rosemont."},
             "parking": {
               "parkingTypes": [{"parkingType": "outdoor"}],
               "parkingSpotsPerRental": null
@@ -33,6 +36,9 @@
             "rentRange": [2660.0, 2660.0],
             "bedsRange": [4.0, 4.0],
             "type": "apartment",
+            "furnished": "no",
+            "amenities": [],
+            "description": {"plain": "Grand logement non meublé."},
             "parking": {
               "parkingTypes": [{"parkingType": "outdoor"}],
               "parkingSpotsPerRental": null
@@ -52,6 +58,9 @@
             "rentRange": [2900.0, 2900.0],
             "bedsRange": [4.0, 4.0],
             "type": "apartment",
+            "furnished": "no",
+            "amenities": [],
+            "description": {"plain": "Appartement spacieux."},
             "parking": {
               "parkingTypes": [],
               "parkingSpotsPerRental": null
@@ -71,6 +80,9 @@
             "rentRange": [500.0, 500.0],
             "bedsRange": [1.0, 1.0],
             "type": "apartment",
+            "furnished": "no",
+            "amenities": [],
+            "description": {"plain": "Petit studio."},
             "parking": {
               "parkingTypes": [],
               "parkingSpotsPerRental": null
