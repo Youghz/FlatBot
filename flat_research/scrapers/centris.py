@@ -15,6 +15,7 @@ from flat_research.parsing import (
     extract_bedrooms_from_text,
     extract_move_in_date,
     is_move_in_past,
+    matches_criteria,
 )
 
 logger = logging.getLogger(__name__)
@@ -53,11 +54,12 @@ NEIGHBOURHOOD_KEYWORDS = {
 
 def _build_urls(config: dict) -> list[str]:
     """Build Centris search URLs with filters in the path."""
-    criteria = config["criteria"]
-    neighbourhoods = criteria["neighbourhoods"]
+    from flat_research.parsing import get_neighbourhood_names
+
+    neighbourhood_names = get_neighbourhood_names(config["criteria"])
 
     # Deduplicate borough slugs (multiple neighbourhoods map to same borough)
-    slugs = list(dict.fromkeys(BOROUGH_SLUGS[n] for n in neighbourhoods if n in BOROUGH_SLUGS))
+    slugs = list(dict.fromkeys(BOROUGH_SLUGS[n] for n in neighbourhood_names if n in BOROUGH_SLUGS))
 
     urls = []
     for slug in slugs:
@@ -67,10 +69,8 @@ def _build_urls(config: dict) -> list[str]:
     return urls
 
 
-def _parse_card(card, config: dict) -> Listing | None:
-    """Parse a single Centris property-thumbnail-item card."""
-    criteria = config["criteria"]
-
+def _parse_card(card) -> Listing | None:
+    """Parse a single Centris property-thumbnail-item card into a Listing."""
     # MLS number / listing ID
     sku_el = card.select_one("meta[itemprop='sku']")
     lid = sku_el["content"] if sku_el else ""
@@ -90,10 +90,6 @@ def _parse_card(card, config: dict) -> Listing | None:
         price = float(price_el["content"]) if price_el else 0.0
     except (ValueError, KeyError):
         price = 0.0
-
-    # Price filter
-    if price < criteria["price_min"] or price > criteria["price_max"]:
-        return None
 
     # URL
     link_el = card.select_one("a.property-thumbnail-summary-link")
@@ -118,8 +114,6 @@ def _parse_card(card, config: dict) -> Listing | None:
             bedrooms = 0
     else:
         bedrooms = extract_bedrooms_from_text(specs_text)
-    if bedrooms > 0 and bedrooms < criteria["bedrooms_min"]:
-        return None
 
     # Furnished / parking (use shared detection with negation handling)
     furnished, parking = check_furnished_parking(specs_text)
@@ -176,10 +170,11 @@ def scrape(config: dict, session=None) -> list[Listing]:
 
         for card in cards:
             try:
-                listing = _parse_card(card, config)
+                listing = _parse_card(card)
                 if listing and listing.listing_id not in seen_ids:
                     seen_ids.add(listing.listing_id)
-                    listings.append(listing)
+                    if matches_criteria(listing, config):
+                        listings.append(listing)
             except Exception as e:
                 logger.warning(f"Error parsing Centris card: {e}")
 

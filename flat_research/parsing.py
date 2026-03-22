@@ -35,19 +35,64 @@ def extract_bedrooms_from_text(text: str) -> int:
     return 0
 
 
+_FURNISHED_NEG = [
+    "non meublé",
+    "non meuble",
+    "non-meublé",
+    "non-meuble",
+    "pas meublé",
+    "pas meuble",
+    "sans meubles",
+    "sans meuble",
+    "unfurnished",
+    "not furnished",
+]
+_FURNISHED_POS = [
+    "meublé",
+    "meuble",
+    "furnished",
+    "meubles inclus",
+    "semi-meublé",
+    "semi-meuble",
+    "semi meublé",
+    "fully furnished",
+    "tout inclus",
+    "all included",
+    "tout équipé",
+    "tout equipe",
+    "clé en main",
+    "cle en main",
+    "turnkey",
+]
+_PARKING_NEG = [
+    "pas de parking",
+    "pas de stationnement",
+    "no parking",
+    "sans parking",
+    "sans stationnement",
+]
+_PARKING_POS = ["parking", "stationnement", "garage"]
+
+
 def check_furnished_parking(text: str) -> tuple[bool, bool]:
     text_lower = text.lower()
-    neg_patterns = ["non meublé", "non meuble", "non-meublé", "pas meublé", "unfurnished"]
-    if any(p in text_lower for p in neg_patterns):
+
+    if any(p in text_lower for p in _FURNISHED_NEG):
         furnished = False
     else:
-        furnished = any(w in text_lower for w in ["meublé", "meuble", "furnished", "meubles inclus"])
-    neg_parking = ["pas de parking", "pas de stationnement", "no parking", "sans parking"]
-    if any(p in text_lower for p in neg_parking):
+        furnished = any(w in text_lower for w in _FURNISHED_POS)
+
+    if any(p in text_lower for p in _PARKING_NEG):
         parking = False
     else:
-        parking = any(w in text_lower for w in ["parking", "stationnement", "garage"])
+        parking = any(w in text_lower for w in _PARKING_POS)
+
     return furnished, parking
+
+
+def has_furnished_negation(text: str) -> bool:
+    """Check if text explicitly denies furnished status."""
+    return any(p in text.lower() for p in _FURNISHED_NEG)
 
 
 MONTH_FR = {
@@ -206,39 +251,69 @@ def is_move_in_past(move_in_date: str) -> bool:
         return False
 
 
-# Neighbourhood variants for fuzzy matching
-HOOD_VARIANTS = {
-    "villeray": ["villeray", "saint-michel", "parc-extension", "parc extension"],
-    "mile-ex": ["mile-ex", "mile ex", "marconi-alexandra"],
-    "mile-end": ["mile-end", "mile end"],
-    "plateau": ["plateau", "plateau-mont-royal", "plateau mont-royal"],
-    "petite-patrie": ["petite-patrie", "petite patrie", "la petite-patrie"],
-    "rosemont": ["rosemont"],
-    "petite-italie": ["petite-italie", "petite italie", "little italy", "jean-talon"],
-    "ahuntsic": ["ahuntsic", "cartierville", "sault-au-récollet"],
-}
+def _get_hood_search_terms(criteria: dict) -> list[str]:
+    """Build flat list of neighbourhood search terms from config.
+
+    Supports two config formats:
+      - dict: {name: [variant, ...]}  (new format with variants)
+      - list: [name, ...]             (legacy format, uses name as-is)
+    """
+    neighbourhoods = criteria["neighbourhoods"]
+    terms: list[str] = []
+    if isinstance(neighbourhoods, dict):
+        for variants in neighbourhoods.values():
+            terms.extend(v.lower() for v in variants)
+    else:
+        terms.extend(n.lower() for n in neighbourhoods)
+    return terms
+
+
+def get_neighbourhood_names(criteria: dict) -> list[str]:
+    """Return the canonical neighbourhood names from config."""
+    neighbourhoods = criteria["neighbourhoods"]
+    if isinstance(neighbourhoods, dict):
+        return list(neighbourhoods.keys())
+    return list(neighbourhoods)
 
 
 def matches_criteria(listing, config: dict) -> bool:
     criteria = config["criteria"]
 
-    # Price filter
+    # Price
     if listing.price < criteria["price_min"] or listing.price > criteria["price_max"]:
         return False
 
-    # Bedrooms filter
+    # Bedrooms (min and optional max)
     if listing.bedrooms < criteria["bedrooms_min"]:
         return False
+    bedrooms_max = criteria.get("bedrooms_max")
+    if bedrooms_max is not None and listing.bedrooms > bedrooms_max:
+        return False
 
-    # Neighbourhood filter (fuzzy match including common variants)
-    target_names = [n.lower() for n in criteria["neighbourhoods"]]
-    search_terms = []
-    for name in target_names:
-        search_terms.extend(HOOD_VARIANTS.get(name, [name]))
+    # Furnished
+    if criteria.get("furnished") and not listing.furnished:
+        return False
 
+    # Parking
+    if criteria.get("parking") and not listing.parking:
+        return False
+
+    # Move-in date (optional upper bound)
+    move_in_before = criteria.get("move_in_before")
+    if move_in_before and listing.move_in_date:
+        if listing.move_in_date != "immediate":
+            try:
+                move_date = datetime.strptime(listing.move_in_date, "%Y-%m-%d").date()
+                limit_date = datetime.strptime(move_in_before, "%Y-%m-%d").date()
+                if move_date > limit_date:
+                    return False
+            except ValueError:
+                pass
+
+    # Neighbourhood (fuzzy match via configured variants)
+    search_terms = _get_hood_search_terms(criteria)
     text = f"{listing.address} {listing.title} {listing.neighbourhood} {listing.description}".lower()
-    hood_match = any(term in text for term in search_terms)
-    if not hood_match:
+    if not any(term in text for term in search_terms):
         return False
 
     return True
