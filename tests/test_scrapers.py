@@ -1,15 +1,17 @@
-"""Tests for scrapers using saved HTML fixtures.
+"""Tests for scrapers using saved HTML/JSON fixtures.
 
-These tests parse real HTML without making network requests,
-so they also serve as regression tests if the sites change their HTML.
+These tests parse real data without making network requests,
+so they also serve as regression tests if the sites change their structure.
 """
 
+import json
 import pathlib
 
 import pytest
 from bs4 import BeautifulSoup
 
 from flat_research.scrapers.centris import _build_urls, _parse_card
+from flat_research.scrapers.rentals import _build_filters, _node_to_listing
 
 FIXTURES = pathlib.Path(__file__).parent / "fixtures"
 
@@ -111,3 +113,65 @@ class TestCentrisUrls:
         urls = _build_urls(config)
         slugs = [u.split("~")[-1] for u in urls]
         assert "montreal-le-plateau-mont-royal" in slugs
+
+
+class TestRentalsFixture:
+    @pytest.fixture
+    def nodes(self):
+        data = json.loads((FIXTURES / "rentals_graphql.json").read_text())
+        return [edge["node"] for edge in data["data"]["rentalListings"]["edges"]]
+
+    def test_nodes_found(self, nodes):
+        assert len(nodes) > 0, "No nodes found in Rentals.ca fixture"
+
+    def test_parse_node_returns_listing(self, nodes):
+        listing = _node_to_listing(nodes[0])
+        assert listing is not None
+
+    def test_parsed_listing_has_required_fields(self, nodes):
+        listing = _node_to_listing(nodes[0])
+        assert listing.listing_id.startswith("rentals_")
+        assert listing.price > 0
+        assert listing.url.startswith("https://")
+        assert listing.source == "rentals"
+        assert listing.bedrooms > 0
+
+    def test_address_populated(self, nodes):
+        listing = _node_to_listing(nodes[0])
+        assert "Rue" in listing.address or "rue" in listing.address
+
+    def test_neighbourhood_from_api(self, nodes):
+        listing = _node_to_listing(nodes[0])
+        assert listing.neighbourhood == "Rosemont"
+
+    def test_null_neighbourhood_handled(self, nodes):
+        listing = _node_to_listing(nodes[1])
+        assert listing.neighbourhood == ""
+
+    def test_null_name_uses_street(self, nodes):
+        listing = _node_to_listing(nodes[2])
+        assert listing.title != ""
+
+    def test_parking_detection(self, nodes):
+        with_parking = _node_to_listing(nodes[0])
+        without_parking = _node_to_listing(nodes[2])
+        assert with_parking.parking is True
+        assert without_parking.parking is False
+
+
+class TestRentalsFilters:
+    def test_build_filters_basic(self):
+        criteria = {"price_min": 2000, "price_max": 3000, "bedrooms_min": 3}
+        filters = _build_filters(criteria)
+        assert filters["rent"] == [2000, 3000]
+        assert 3 in filters["beds"]
+
+    def test_build_filters_furnished(self):
+        criteria = {"price_min": 0, "price_max": 5000, "bedrooms_min": 1, "furnished": True}
+        filters = _build_filters(criteria)
+        assert filters["furnished"] == ["yes", "fully"]
+
+    def test_build_filters_parking(self):
+        criteria = {"price_min": 0, "price_max": 5000, "bedrooms_min": 1, "parking": True}
+        filters = _build_filters(criteria)
+        assert "parkingSpots" in filters

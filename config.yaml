@@ -23,6 +23,7 @@ criteria:
 sources:
   - kijiji
   - centris
+  - rentals
 
 # --- Google Sheets ---
 # Auth via Application Default Credentials (ADC) - no key file needed.

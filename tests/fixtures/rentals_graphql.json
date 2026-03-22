@@ -1,0 +1,88 @@
+{
+  "data": {
+    "rentalListings": {
+      "pageInfo": {
+        "hasNextPage": false,
+        "endCursor": "YXJyYXljb25uZWN0aW9uOjI="
+      },
+      "edges": [
+        {
+          "node": {
+            "id": "cmVudGFsbGlzdGluZzoxMTI3Mjkw",
+            "name": "6639 rue D'Iberville",
+            "path": "montreal/6639-rue-d-iberville",
+            "rentRange": [2450.0, 2450.0],
+            "bedsRange": [3.0, 3.0],
+            "type": "condo",
+            "parking": {
+              "parkingTypes": [{"parkingType": "outdoor"}],
+              "parkingSpotsPerRental": null
+            },
+            "address": {
+              "neighbourhood": {"name": "Rosemont"},
+              "street": "6639 Rue D'Iberville",
+              "city": {"name": "Montréal"}
+            }
+          }
+        },
+        {
+          "node": {
+            "id": "cmVudGFsbGlzdGluZzoxMTgzNzMw",
+            "name": "4795 Rue Ste-Catherine E.",
+            "path": "montreal/4795-rue-ste-catherine-e",
+            "rentRange": [2660.0, 2660.0],
+            "bedsRange": [4.0, 4.0],
+            "type": "apartment",
+            "parking": {
+              "parkingTypes": [{"parkingType": "outdoor"}],
+              "parkingSpotsPerRental": null
+            },
+            "address": {
+              "neighbourhood": null,
+              "street": "4795 Rue Sainte-Catherine Est",
+              "city": {"name": "Montréal"}
+            }
+          }
+        },
+        {
+          "node": {
+            "id": "cmVudGFsbGlzdGluZzoxMTgyMTMz",
+            "name": null,
+            "path": "montreal/3066-rue-saint-antoine-ouest-1",
+            "rentRange": [2900.0, 2900.0],
+            "bedsRange": [4.0, 4.0],
+            "type": "apartment",
+            "parking": {
+              "parkingTypes": [],
+              "parkingSpotsPerRental": null
+            },
+            "address": {
+              "neighbourhood": {"name": "Villeray"},
+              "street": "3066 Rue Saint-Antoine Ouest",
+              "city": {"name": "Montréal"}
+            }
+          }
+        },
+        {
+          "node": {
+            "id": "cmVudGFsbGlzdGluZzo5OTk5OTk=",
+            "name": "Cheap place",
+            "path": "montreal/cheap-place",
+            "rentRange": [500.0, 500.0],
+            "bedsRange": [1.0, 1.0],
+            "type": "apartment",
+            "parking": {
+              "parkingTypes": [],
+              "parkingSpotsPerRental": null
+            },
+            "address": {
+              "neighbourhood": {"name": "Villeray"},
+              "street": "123 Rue Test",
+              "city": {"name": "Montréal"}
+            }
+          }
+        }
+      ]
+    }
+  }
+}
