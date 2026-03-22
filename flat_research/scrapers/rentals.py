@@ -8,7 +8,7 @@ import logging
 
 from flat_research.http_client import create_session
 from flat_research.models import Listing
-from flat_research.parsing import matches_criteria
+from flat_research.parsing import check_furnished_parking, matches_criteria
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +41,9 @@ query SearchListings(
         rentRange
         bedsRange
         type
+        furnished
+        amenities
+        description { plain }
         parking {
           parkingTypes { parkingType }
           parkingSpotsPerRental
@@ -123,10 +126,31 @@ def _node_to_listing(node: dict) -> Listing | None:
     hood_obj = address_obj.get("neighbourhood") or {}
     neighbourhood = hood_obj.get("name", "")
 
-    # Parking
+    # Furnished — from API field ("yes", "fully", "no", "optional")
+    furnished_val = (node.get("furnished") or "").lower()
+    is_furnished = furnished_val in ("yes", "fully")
+
+    # Parking — from structured parking data
     parking_obj = node.get("parking") or {}
     parking_types = parking_obj.get("parkingTypes") or []
     has_parking = len(parking_types) > 0
+
+    # Amenities — flat list of [category, name] pairs
+    amenities = node.get("amenities") or []
+    amenities_text = " ".join(item for pair in amenities for item in pair)
+
+    # Description
+    desc_obj = node.get("description") or {}
+    description = desc_obj.get("plain", "") if isinstance(desc_obj, dict) else ""
+
+    # Fallback: detect furnished/parking from description + amenities text
+    if not is_furnished or not has_parking:
+        combined_text = f"{amenities_text} {description}"
+        text_furnished, text_parking = check_furnished_parking(combined_text)
+        if not is_furnished:
+            is_furnished = text_furnished
+        if not has_parking:
+            has_parking = text_parking
 
     # Title
     name = node.get("name") or ""
@@ -140,9 +164,9 @@ def _node_to_listing(node: dict) -> Listing | None:
         address=address,
         neighbourhood=neighbourhood,
         bedrooms=bedrooms,
-        furnished=False,  # API filters furnished but doesn't return it per-listing
+        furnished=is_furnished,
         parking=has_parking,
-        description=f"{title} - {address}",
+        description=description[:300] if description else f"{title} - {address}",
         listing_id=f"rentals_{lid}",
         move_in_date="",
     )

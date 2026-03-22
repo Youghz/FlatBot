@@ -1,10 +1,10 @@
 # FlatBot
 
-Automated Montreal apartment finder. Scrapes rental listings from Kijiji and Centris, filters by criteria (price, bedrooms, neighbourhood, furnished, parking), stores results in a Google Sheet, and sends Telegram notifications for new matches.
+Automated Montreal apartment finder. Scrapes rental listings from Kijiji, Centris and Rentals.ca, filters by criteria (price, bedrooms, neighbourhood, furnished, parking), stores results in a Google Sheet, and sends Telegram notifications for new matches.
 
 ## How it works
 
-1. Scrapes Kijiji (JSON-LD) and Centris (HTML) in parallel
+1. Scrapes Kijiji (JSON-LD), Centris (HTML) and Rentals.ca (GraphQL API) in parallel
 2. Filters listings by price, bedrooms, neighbourhood, furnished/parking
 3. Deduplicates against existing entries in Google Sheets
 4. Sends a Telegram message for each new listing
@@ -61,8 +61,9 @@ flat_research/
   sheets.py        # Google Sheets integration
   notifier.py      # Telegram notifications
   scrapers/
-    centris.py     # Centris scraper
+    centris.py     # Centris scraper (HTML)
     kijiji.py      # Kijiji scraper (JSON-LD)
+    rentals.py     # Rentals.ca scraper (GraphQL API)
 ```
 
 ## Tests
@@ -71,7 +72,7 @@ flat_research/
 uv run pytest
 ```
 
-Tests use saved HTML fixtures to validate scrapers without network requests.
+Tests use saved HTML/JSON fixtures to validate scrapers without network requests.
 
 ## Deployment
 
