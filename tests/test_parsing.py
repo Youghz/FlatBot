@@ -63,7 +63,13 @@ class TestMatchesCriteria:
             "price_min": 2000,
             "price_max": 3000,
             "bedrooms_min": 3,
-            "neighbourhoods": ["Villeray", "Rosemont", "Petite-Patrie"],
+            "furnished": False,
+            "parking": False,
+            "neighbourhoods": {
+                "Villeray": ["villeray"],
+                "Rosemont": ["rosemont"],
+                "Petite-Patrie": ["petite-patrie", "petite patrie"],
+            },
         }
     }
 
@@ -75,6 +81,8 @@ class TestMatchesCriteria:
             "title": "",
             "neighbourhood": "",
             "description": "",
+            "furnished": False,
+            "parking": False,
         }
         defaults.update(kwargs)
         return Listing(**defaults)
@@ -95,6 +103,11 @@ class TestMatchesCriteria:
         listing = self._make_listing(bedrooms=2)
         assert matches_criteria(listing, self.CONFIG) is False
 
+    def test_bedrooms_max(self):
+        config = {"criteria": {**self.CONFIG["criteria"], "bedrooms_max": 4}}
+        assert matches_criteria(self._make_listing(bedrooms=4), config) is True
+        assert matches_criteria(self._make_listing(bedrooms=5), config) is False
+
     def test_wrong_neighbourhood(self):
         listing = self._make_listing(address="Westmount, Montreal")
         assert matches_criteria(listing, self.CONFIG) is False
@@ -107,7 +120,7 @@ class TestMatchesCriteria:
         config = {
             "criteria": {
                 **self.CONFIG["criteria"],
-                "neighbourhoods": ["Mile-Ex"],
+                "neighbourhoods": {"Mile-Ex": ["mile-ex", "mile ex"]},
             }
         }
         listing = self._make_listing(address="Mile Ex, Montreal")
@@ -117,7 +130,7 @@ class TestMatchesCriteria:
         config = {
             "criteria": {
                 **self.CONFIG["criteria"],
-                "neighbourhoods": ["Plateau"],
+                "neighbourhoods": {"Plateau": ["plateau", "plateau-mont-royal"]},
             }
         }
         listing = self._make_listing(address="Plateau-Mont-Royal, Montreal")
@@ -127,10 +140,56 @@ class TestMatchesCriteria:
         config = {
             "criteria": {
                 **self.CONFIG["criteria"],
-                "neighbourhoods": ["Mile-End"],
+                "neighbourhoods": {"Mile-End": ["mile-end", "mile end"]},
             }
         }
         listing = self._make_listing(address="Mile End, Montreal")
+        assert matches_criteria(listing, config) is True
+
+    def test_furnished_required_but_missing(self):
+        config = {"criteria": {**self.CONFIG["criteria"], "furnished": True}}
+        listing = self._make_listing(furnished=False)
+        assert matches_criteria(listing, config) is False
+
+    def test_furnished_required_and_present(self):
+        config = {"criteria": {**self.CONFIG["criteria"], "furnished": True}}
+        listing = self._make_listing(furnished=True)
+        assert matches_criteria(listing, config) is True
+
+    def test_parking_required_but_missing(self):
+        config = {"criteria": {**self.CONFIG["criteria"], "parking": True}}
+        listing = self._make_listing(parking=False)
+        assert matches_criteria(listing, config) is False
+
+    def test_parking_required_and_present(self):
+        config = {"criteria": {**self.CONFIG["criteria"], "parking": True}}
+        listing = self._make_listing(parking=True)
+        assert matches_criteria(listing, config) is True
+
+    def test_move_in_before_ok(self):
+        config = {"criteria": {**self.CONFIG["criteria"], "move_in_before": "2026-09-01"}}
+        listing = self._make_listing(move_in_date="2026-07-01")
+        assert matches_criteria(listing, config) is True
+
+    def test_move_in_before_too_late(self):
+        config = {"criteria": {**self.CONFIG["criteria"], "move_in_before": "2026-09-01"}}
+        listing = self._make_listing(move_in_date="2026-10-01")
+        assert matches_criteria(listing, config) is False
+
+    def test_move_in_before_immediate_ok(self):
+        config = {"criteria": {**self.CONFIG["criteria"], "move_in_before": "2026-09-01"}}
+        listing = self._make_listing(move_in_date="immediate")
+        assert matches_criteria(listing, config) is True
+
+    def test_legacy_neighbourhood_list_format(self):
+        """Backward compat: neighbourhoods as a plain list still works."""
+        config = {
+            "criteria": {
+                **self.CONFIG["criteria"],
+                "neighbourhoods": ["Villeray", "Rosemont"],
+            }
+        }
+        listing = self._make_listing(address="Villeray, Montreal")
         assert matches_criteria(listing, config) is True
 
 

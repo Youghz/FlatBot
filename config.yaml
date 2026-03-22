@@ -5,19 +5,44 @@
 # --- Criteres de recherche ---
 criteria:
   neighbourhoods:
-    - Villeray
-    - Mile-Ex
-    - Mile-End
-    - Plateau
-    - Petite-Patrie
-    - Rosemont
-    - Petite-Italie
-    - Ahuntsic
+    Villeray:
+      - villeray
+      - saint-michel
+      - parc-extension
+      - parc extension
+    Mile-Ex:
+      - mile-ex
+      - mile ex
+      - marconi-alexandra
+    Mile-End:
+      - mile-end
+      - mile end
+    Plateau:
+      - plateau
+      - plateau-mont-royal
+      - plateau mont-royal
+    Petite-Patrie:
+      - petite-patrie
+      - petite patrie
+      - la petite-patrie
+    Rosemont:
+      - rosemont
+    Petite-Italie:
+      - petite-italie
+      - petite italie
+      - little italy
+      - jean-talon
+    Ahuntsic:
+      - ahuntsic
+      - cartierville
+      - sault-au-récollet
   bedrooms_min: 3
+  # bedrooms_max: 5          # optionnel
   price_min: 2000
   price_max: 3000
   furnished: true
-  parking: true
+  parking: false
+  # move_in_before: "2026-09-01"  # optionnel — YYYY-MM-DD
 
 # --- Sources ---
 sources:

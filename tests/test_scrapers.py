@@ -18,7 +18,14 @@ FIXTURES = pathlib.Path(__file__).parent / "fixtures"
 CONFIG = {
     "criteria": {
         "city": "Montreal",
-        "neighbourhoods": ["Villeray", "Mile-Ex", "Petite-Patrie", "Rosemont", "Petite-Italie", "Ahuntsic"],
+        "neighbourhoods": {
+            "Villeray": ["villeray", "saint-michel", "parc-extension"],
+            "Mile-Ex": ["mile-ex", "mile ex"],
+            "Petite-Patrie": ["petite-patrie", "petite patrie"],
+            "Rosemont": ["rosemont"],
+            "Petite-Italie": ["petite-italie", "petite italie", "jean-talon"],
+            "Ahuntsic": ["ahuntsic", "cartierville"],
+        },
         "bedrooms_min": 3,
         "price_min": 2000,
         "price_max": 3000,
@@ -39,17 +46,14 @@ class TestCentrisFixture:
         assert len(cards) > 0, "No Centris cards found in fixture — HTML structure may have changed"
 
     def test_parse_card_returns_listing(self, cards):
-        # Parse with relaxed config to get at least one result
-        relaxed_config = {"criteria": {**CONFIG["criteria"], "price_min": 0, "price_max": 99999, "bedrooms_min": 0}}
-        results = [_parse_card(c, relaxed_config) for c in cards]
+        results = [_parse_card(c) for c in cards]
         listings = [r for r in results if r is not None]
         assert len(listings) > 0, "No listings parsed from Centris cards"
 
     def test_parsed_listing_has_required_fields(self, cards):
-        relaxed_config = {"criteria": {**CONFIG["criteria"], "price_min": 0, "price_max": 99999, "bedrooms_min": 0}}
         listing = None
         for card in cards:
-            listing = _parse_card(card, relaxed_config)
+            listing = _parse_card(card)
             if listing:
                 break
         assert listing is not None
@@ -59,8 +63,7 @@ class TestCentrisFixture:
         assert listing.source == "centris"
 
     def test_bedroom_count_populated(self, cards):
-        relaxed_config = {"criteria": {**CONFIG["criteria"], "price_min": 0, "price_max": 99999, "bedrooms_min": 0}}
-        listings = [_parse_card(c, relaxed_config) for c in cards]
+        listings = [_parse_card(c) for c in cards]
         listings = [item for item in listings if item is not None]
         with_bedrooms = [item for item in listings if item.bedrooms > 0]
         assert len(with_bedrooms) > 0, "No listings have bedroom count — div.cac parsing may be broken"
@@ -107,7 +110,10 @@ class TestCentrisUrls:
         config = {
             "criteria": {
                 **CONFIG["criteria"],
-                "neighbourhoods": ["Plateau", "Mile-End"],
+                "neighbourhoods": {
+                    "Plateau": ["plateau"],
+                    "Mile-End": ["mile-end"],
+                },
             }
         }
         urls = _build_urls(config)

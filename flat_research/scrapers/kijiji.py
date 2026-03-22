@@ -16,6 +16,7 @@ from flat_research.parsing import (
     check_furnished_parking,
     extract_bedrooms_from_text,
     extract_move_in_date,
+    has_furnished_negation,
     is_move_in_past,
     matches_criteria,
 )
@@ -92,11 +93,9 @@ def scrape(config: dict, session=None) -> list[Listing]:
         "re": criteria["price_max"],
         "numberbedrooms": criteria["bedrooms_min"],
     }
-    search_furnished = criteria.get("furnished", False)
-    search_parking = criteria.get("parking", False)
-    if search_furnished:
+    if criteria.get("furnished"):
         params["furnished"] = 1
-    if search_parking:
+    if criteria.get("parking"):
         params["numberparkingspots"] = 1
 
     query_string = "&".join(f"{k}={v}" for k, v in params.items())
@@ -152,12 +151,10 @@ def scrape(config: dict, session=None) -> list[Listing]:
 
             # Detect furnished/parking from full text
             furnished, parking = check_furnished_parking(full_text)
-            # If search filters require furnished/parking and text detection fails,
-            # trust the Kijiji search filter
-            if search_furnished and not furnished:
+            # Kijiji API already filtered for furnished — trust it
+            # unless the text explicitly says "non meublé" / "unfurnished"
+            if criteria.get("furnished") and not furnished and not has_furnished_negation(full_text):
                 furnished = True
-            if search_parking and not parking:
-                parking = True
 
             # Move-in date from full text
             move_in_date = extract_move_in_date(full_text)
