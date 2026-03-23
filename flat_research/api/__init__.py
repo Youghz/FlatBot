@@ -10,6 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from flat_research.api.routes_auth import router as auth_router
 from flat_research.api.routes_criteria import router as criteria_router
 from flat_research.api.routes_listings import router as listings_router
+from flat_research.api.routes_telegram import router as telegram_router
 from flat_research.api.routes_user import router as user_router
 
 STATIC_DIR = Path(__file__).resolve().parent.parent.parent / "static"
@@ -30,6 +31,7 @@ def create_app() -> FastAPI:
     app.include_router(criteria_router)
     app.include_router(listings_router)
     app.include_router(user_router)
+    app.include_router(telegram_router)
 
     # Serve React build in production (if static/ dir exists)
     if STATIC_DIR.is_dir():
