@@ -200,9 +200,9 @@ locals {
   web_image     = "${var.region}-docker.pkg.dev/${var.project_id}/flat-research/flatbot-web:latest"
   scraper_image = "${var.region}-docker.pkg.dev/${var.project_id}/flat-research/flatbot-scraper:latest"
   secrets_env = {
-    DATABASE_URL       = "${google_secret_manager_secret.database_url.id}/versions/latest"
-    JWT_SECRET_KEY     = "${google_secret_manager_secret.jwt_secret_key.id}/versions/latest"
-    TELEGRAM_BOT_TOKEN = "${google_secret_manager_secret.telegram_bot_token.id}/versions/latest"
+    DATABASE_URL       = google_secret_manager_secret.database_url.secret_id
+    JWT_SECRET_KEY     = google_secret_manager_secret.jwt_secret_key.secret_id
+    TELEGRAM_BOT_TOKEN = google_secret_manager_secret.telegram_bot_token.secret_id
   }
 }
 
