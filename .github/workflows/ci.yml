@@ -15,8 +15,9 @@ on:
 env:
   PROJECT_ID: sandbox-hugo
   REGION: northamerica-northeast1
-  JOB_NAME: flat-research
-  REGISTRY: northamerica-northeast1-docker.pkg.dev/sandbox-hugo/flat-research/flat-research
+  REGISTRY: northamerica-northeast1-docker.pkg.dev/sandbox-hugo/flat-research
+  WEB_SERVICE: flatbot-web
+  SCRAPER_JOB: flatbot-scraper
 
 jobs:
   lint-and-test:
@@ -39,33 +40,17 @@ jobs:
       - name: Unit tests
         run: uv run pytest tests/ -q --ignore=tests/test_integration.py
 
-  integration:
-    runs-on: ubuntu-latest
-    needs: lint-and-test
-    if: github.ref == 'refs/heads/main'
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/setup-node@v4
         with:
-          version: "0.7"
+          node-version: 22
 
-      - run: uv sync --frozen
-
-      - uses: google-github-actions/auth@v2
-        with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
-
-      - name: Integration tests
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          GOOGLE_SPREADSHEET_ID: ${{ secrets.GOOGLE_SPREADSHEET_ID }}
-        run: uv run pytest tests/test_integration.py -q
+      - name: Frontend build
+        working-directory: frontend
+        run: npm ci && npm run build
 
   deploy:
     runs-on: ubuntu-latest
-    needs: integration
+    needs: lint-and-test
     if: github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
@@ -79,32 +64,42 @@ jobs:
       - name: Configure Docker for Artifact Registry
         run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
 
-      - name: Build and push image
+      - name: Build and push web image
         run: |
-          SHA_TAG="${{ env.REGISTRY }}:${{ github.sha }}"
-          LATEST_TAG="${{ env.REGISTRY }}:latest"
-          docker build -t "$SHA_TAG" -t "$LATEST_TAG" .
-          docker push "$SHA_TAG"
-          docker push "$LATEST_TAG"
+          IMAGE="${{ env.REGISTRY }}/flatbot-web"
+          docker build --target web -t "$IMAGE:${{ github.sha }}" -t "$IMAGE:latest" .
+          docker push "$IMAGE:${{ github.sha }}"
+          docker push "$IMAGE:latest"
 
-      - name: Deploy to Cloud Run
+      - name: Build and push scraper image
         run: |
-          gcloud run jobs update ${{ env.JOB_NAME }} \
-            --image="${{ env.REGISTRY }}:${{ github.sha }}" \
+          IMAGE="${{ env.REGISTRY }}/flatbot-scraper"
+          docker build --target scraper -t "$IMAGE:${{ github.sha }}" -t "$IMAGE:latest" .
+          docker push "$IMAGE:${{ github.sha }}"
+          docker push "$IMAGE:latest"
+
+      - name: Deploy web service
+        run: |
+          gcloud run deploy ${{ env.WEB_SERVICE }} \
+            --image="${{ env.REGISTRY }}/flatbot-web:${{ github.sha }}" \
+            --region="${{ env.REGION }}" \
+            --project="${{ env.PROJECT_ID }}" \
+            --allow-unauthenticated \
+            --port=8080
+
+      - name: Deploy scraper job
+        run: |
+          gcloud run jobs update ${{ env.SCRAPER_JOB }} \
+            --image="${{ env.REGISTRY }}/flatbot-scraper:${{ github.sha }}" \
             --region="${{ env.REGION }}" \
             --project="${{ env.PROJECT_ID }}"
 
-      - name: Smoke test
+      - name: Cleanup old images (keep latest only)
         run: |
-          gcloud run jobs execute ${{ env.JOB_NAME }} \
-            --region="${{ env.REGION }}" \
-            --project="${{ env.PROJECT_ID }}" \
-            --args="--check" \
-            --wait
-
-      - name: Cleanup old images (keep last 5)
-        run: |
-          gcloud artifacts docker images list "${{ env.REGISTRY }}" \
-            --sort-by=~UPDATE_TIME --format="value(VERSION)" \
-            | tail -n +2 \
-            | xargs -rI {} gcloud artifacts docker images delete "${{ env.REGISTRY }}@{}" --quiet --delete-tags
+          for repo in flatbot-web flatbot-scraper; do
+            FULL="${{ env.REGISTRY }}/$repo"
+            gcloud artifacts docker images list "$FULL" \
+              --sort-by=~UPDATE_TIME --format="value(VERSION)" \
+              | tail -n +2 \
+              | xargs -rI {} gcloud artifacts docker images delete "$FULL@{}" --quiet --delete-tags
+          done

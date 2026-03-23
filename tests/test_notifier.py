@@ -24,12 +24,8 @@ def _make_listing(**kwargs):
     return Listing(**defaults)
 
 
-CONFIG = {
-    "telegram": {
-        "bot_token": "fake-token",
-        "chat_id": "-123456",
-    }
-}
+BOT_TOKEN = "fake-token"
+CHAT_ID = "-123456"
 
 
 class TestNotifierFormatting:
@@ -39,7 +35,7 @@ class TestNotifierFormatting:
         mock_post.return_value.raise_for_status = lambda: None
 
         listing = _make_listing()
-        send_notification([listing], "https://docs.google.com/sheet/123", CONFIG)
+        send_notification([listing], CHAT_ID, BOT_TOKEN)
 
         mock_post.assert_called_once()
         payload = mock_post.call_args[1]["json"]
@@ -50,13 +46,12 @@ class TestNotifierFormatting:
 
     @patch("flat_research.notifier.requests.post")
     def test_skips_when_no_token(self, mock_post):
-        config = {"telegram": {"bot_token": "", "chat_id": "-123"}}
-        send_notification([_make_listing()], "https://sheet", config)
+        send_notification([_make_listing()], CHAT_ID, "")
         mock_post.assert_not_called()
 
     @patch("flat_research.notifier.requests.post")
     def test_skips_when_no_listings(self, mock_post):
-        send_notification([], "https://sheet", CONFIG)
+        send_notification([], CHAT_ID, BOT_TOKEN)
         mock_post.assert_not_called()
 
     @patch("flat_research.notifier.requests.post")
@@ -65,7 +60,7 @@ class TestNotifierFormatting:
         mock_post.return_value.raise_for_status = lambda: None
 
         listing = _make_listing(title="<script>alert('xss')</script>")
-        send_notification([listing], "https://sheet", CONFIG)
+        send_notification([listing], CHAT_ID, BOT_TOKEN)
 
         payload = mock_post.call_args[1]["json"]
         assert "<script>" not in payload["text"]
@@ -76,8 +71,7 @@ class TestNotifierFormatting:
         mock_post.return_value.status_code = 200
         mock_post.return_value.raise_for_status = lambda: None
 
-        # Create enough listings to exceed 4000 chars
         listings = [_make_listing(title=f"Listing {i} " + "x" * 200, listing_id=f"kijiji_{i}") for i in range(30)]
-        send_notification(listings, "https://sheet", CONFIG)
+        send_notification(listings, CHAT_ID, BOT_TOKEN)
 
         assert mock_post.call_count >= 2
