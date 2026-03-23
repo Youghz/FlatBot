@@ -90,6 +90,7 @@ def main():
     parser.add_argument("--serve", action="store_true", help="Start the web API server")
     parser.add_argument("--scrape-multi", action="store_true", help="Run multi-user scrape cycle (DB-based)")
     parser.add_argument("--check", action="store_true", help="Run health checks and exit")
+    parser.add_argument("--migrate", action="store_true", help="Run Alembic migrations and exit")
     args = parser.parse_args()
 
     if args.serve:
@@ -107,6 +108,15 @@ def main():
 
         ok = run_multi_user()
         sys.exit(0 if ok else 1)
+
+    if args.migrate:
+        from alembic import command
+        from alembic.config import Config
+
+        alembic_cfg = Config("alembic.ini")
+        command.upgrade(alembic_cfg, "head")
+        logger.info("Migration complete")
+        return
 
     if args.check:
         ok = run_check()
