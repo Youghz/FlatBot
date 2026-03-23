@@ -94,7 +94,9 @@ resource "google_sql_user" "postgres" {
 
 resource "google_secret_manager_secret" "database_url" {
   secret_id = "database-url"
-  replication { auto {} }
+  replication {
+    auto {}
+  }
   depends_on = [google_project_service.apis]
 }
 
@@ -105,7 +107,9 @@ resource "google_secret_manager_secret_version" "database_url" {
 
 resource "google_secret_manager_secret" "jwt_secret_key" {
   secret_id = "jwt-secret-key"
-  replication { auto {} }
+  replication {
+    auto {}
+  }
   depends_on = [google_project_service.apis]
 }
 
@@ -116,7 +120,9 @@ resource "google_secret_manager_secret_version" "jwt_secret_key" {
 
 resource "google_secret_manager_secret" "telegram_bot_token" {
   secret_id = "telegram-bot-token"
-  replication { auto {} }
+  replication {
+    auto {}
+  }
   depends_on = [google_project_service.apis]
 }
 
