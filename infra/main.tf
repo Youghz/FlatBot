@@ -70,6 +70,11 @@ resource "google_sql_database_instance" "db" {
     ip_configuration {
       ipv4_enabled = true
     }
+
+    password_validation_policy {
+      min_length                = 12
+      enable_password_policy    = true
+    }
   }
 
   deletion_protection = true
