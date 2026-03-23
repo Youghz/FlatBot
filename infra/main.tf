@@ -68,12 +68,16 @@ resource "google_sql_database_instance" "db" {
     availability_type = "ZONAL"
 
     ip_configuration {
-      ipv4_enabled = true
+      ipv4_enabled    = true
+      require_ssl     = true
     }
 
     password_validation_policy {
-      min_length                = 12
-      enable_password_policy    = true
+      enable_password_policy      = true
+      min_length                  = 12
+      complexity                  = "COMPLEXITY_DEFAULT"
+      reuse_interval              = 10
+      disallow_username_substring = true
     }
   }
 
