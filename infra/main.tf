@@ -26,6 +26,8 @@ resource "google_project_service" "apis" {
     "cloudscheduler.googleapis.com",
     "secretmanager.googleapis.com",
     "sqladmin.googleapis.com",
+    "vpcaccess.googleapis.com",
+    "servicenetworking.googleapis.com",
   ])
   service            = each.value
   disable_on_destroy = false
@@ -37,6 +39,31 @@ resource "google_artifact_registry_repository" "repo" {
   location      = var.region
   repository_id = "flat-research"
   format        = "DOCKER"
+  depends_on    = [google_project_service.apis]
+}
+
+# ─── Private Network for Cloud SQL ──────────────────────────────────
+
+resource "google_compute_global_address" "private_ip" {
+  name          = "flatbot-sql-ip"
+  purpose       = "VPC_PEERING"
+  address_type  = "INTERNAL"
+  prefix_length = 16
+  network       = "projects/${var.project_id}/global/networks/default"
+  depends_on    = [google_project_service.apis]
+}
+
+resource "google_service_networking_connection" "private_vpc" {
+  network                 = "projects/${var.project_id}/global/networks/default"
+  service                 = "servicenetworking.googleapis.com"
+  reserved_peering_ranges = [google_compute_global_address.private_ip.name]
+}
+
+resource "google_vpc_access_connector" "connector" {
+  name          = "flatbot-vpc"
+  region        = var.region
+  network       = "default"
+  ip_cidr_range = "10.8.0.0/28"
   depends_on    = [google_project_service.apis]
 }
 
@@ -68,8 +95,9 @@ resource "google_sql_database_instance" "db" {
     availability_type = "ZONAL"
 
     ip_configuration {
-      ipv4_enabled = true
-      ssl_mode     = "ENCRYPTED_ONLY"
+      ipv4_enabled    = false
+      private_network = "projects/${var.project_id}/global/networks/default"
+      ssl_mode        = "ENCRYPTED_ONLY"
     }
 
     password_validation_policy {
@@ -82,7 +110,7 @@ resource "google_sql_database_instance" "db" {
   }
 
   deletion_protection = true
-  depends_on          = [google_project_service.apis]
+  depends_on          = [google_service_networking_connection.private_vpc]
 }
 
 resource "google_sql_database" "flatbot" {
@@ -228,6 +256,11 @@ resource "google_cloud_run_v2_service" "web" {
     }
 
     service_account = google_service_account.flatbot.email
+
+    vpc_access {
+      connector = google_vpc_access_connector.connector.id
+      egress    = "PRIVATE_RANGES_ONLY"
+    }
   }
 
   depends_on = [
@@ -296,6 +329,11 @@ resource "google_cloud_run_v2_job" "scraper" {
       }
 
       service_account = google_service_account.flatbot.email
+
+      vpc_access {
+        connector = google_vpc_access_connector.connector.id
+        egress    = "PRIVATE_RANGES_ONLY"
+      }
     }
   }
 
