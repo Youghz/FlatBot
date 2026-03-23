@@ -70,8 +70,13 @@ resource "google_vpc_access_connector" "connector" {
 # ─── Cloud SQL ──────────────────────────────────────────────────────
 
 resource "random_password" "db_password" {
-  length  = 32
-  special = false
+  length           = 32
+  special          = true
+  override_special = "!@#%&*"
+  min_lower        = 2
+  min_upper        = 2
+  min_numeric      = 2
+  min_special      = 2
 }
 
 resource "random_password" "jwt_secret" {
