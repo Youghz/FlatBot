@@ -18,3 +18,8 @@ output "db_connection_url" {
   value       = local.database_url
   sensitive   = true
 }
+
+output "next_step" {
+  description = "Manual step after first apply"
+  value       = "Add Telegram bot token: echo -n 'YOUR_TOKEN' | gcloud secrets versions add telegram-bot-token --data-file=- --project=${var.project_id}"
+}

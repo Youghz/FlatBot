@@ -1,7 +1,2 @@
-project_id         = "sandbox-hugo"
-region             = "northamerica-northeast1"
-telegram_bot_token = "your_bot_token_here"
-
-# Optional — auto-generated if left empty
-# db_password     = ""
-# jwt_secret_key  = ""
+project_id = "sandbox-hugo"
+region     = "northamerica-northeast1"

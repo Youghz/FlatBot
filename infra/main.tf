@@ -45,13 +45,16 @@ resource "google_artifact_registry_repository" "repo" {
 resource "random_password" "db_password" {
   length  = 32
   special = false
-  count   = var.db_password == "" ? 1 : 0
+}
+
+resource "random_password" "jwt_secret" {
+  length  = 64
+  special = false
 }
 
 locals {
-  db_password = var.db_password != "" ? var.db_password : random_password.db_password[0].result
   db_connection = "${var.project_id}:${var.region}:${google_sql_database_instance.db.name}"
-  database_url  = "postgresql://postgres:${local.db_password}@/${google_sql_database.flatbot.name}?host=/cloudsql/${local.db_connection}"
+  database_url  = "postgresql://postgres:${random_password.db_password.result}@/${google_sql_database.flatbot.name}?host=/cloudsql/${local.db_connection}"
 }
 
 resource "google_sql_database_instance" "db" {
@@ -65,7 +68,7 @@ resource "google_sql_database_instance" "db" {
     availability_type = "ZONAL"
 
     ip_configuration {
-      ipv4_enabled = true  # Needed for Cloud Run without VPC connector
+      ipv4_enabled = true
     }
   }
 
@@ -81,26 +84,17 @@ resource "google_sql_database" "flatbot" {
 resource "google_sql_user" "postgres" {
   name     = "postgres"
   instance = google_sql_database_instance.db.name
-  password = local.db_password
+  password = random_password.db_password.result
 }
 
 # ─── Secrets ────────────────────────────────────────────────────────
-
-resource "random_password" "jwt_secret" {
-  length  = 64
-  special = false
-  count   = var.jwt_secret_key == "" ? 1 : 0
-}
-
-locals {
-  jwt_secret_key = var.jwt_secret_key != "" ? var.jwt_secret_key : random_password.jwt_secret[0].result
-}
+# Terraform creates the secrets and auto-generates DB password + JWT key.
+# TELEGRAM_BOT_TOKEN must be added manually after apply:
+#   echo -n "your_token" | gcloud secrets versions add telegram-bot-token --data-file=-
 
 resource "google_secret_manager_secret" "database_url" {
   secret_id = "database-url"
-  replication {
-    auto {}
-  }
+  replication { auto {} }
   depends_on = [google_project_service.apis]
 }
 
@@ -111,29 +105,22 @@ resource "google_secret_manager_secret_version" "database_url" {
 
 resource "google_secret_manager_secret" "jwt_secret_key" {
   secret_id = "jwt-secret-key"
-  replication {
-    auto {}
-  }
+  replication { auto {} }
   depends_on = [google_project_service.apis]
 }
 
 resource "google_secret_manager_secret_version" "jwt_secret_key" {
   secret      = google_secret_manager_secret.jwt_secret_key.id
-  secret_data = local.jwt_secret_key
+  secret_data = random_password.jwt_secret.result
 }
 
 resource "google_secret_manager_secret" "telegram_bot_token" {
   secret_id = "telegram-bot-token"
-  replication {
-    auto {}
-  }
+  replication { auto {} }
   depends_on = [google_project_service.apis]
 }
 
-resource "google_secret_manager_secret_version" "telegram_bot_token" {
-  secret      = google_secret_manager_secret.telegram_bot_token.id
-  secret_data = var.telegram_bot_token
-}
+# No version created — add manually after apply
 
 # ─── Service Account ───────────────────────────────────────────────
 
@@ -155,8 +142,8 @@ resource "google_project_iam_member" "flatbot_roles" {
 
 resource "google_secret_manager_secret_iam_member" "access" {
   for_each = {
-    database_url      = google_secret_manager_secret.database_url.id
-    jwt_secret_key    = google_secret_manager_secret.jwt_secret_key.id
+    database_url       = google_secret_manager_secret.database_url.id
+    jwt_secret_key     = google_secret_manager_secret.jwt_secret_key.id
     telegram_bot_token = google_secret_manager_secret.telegram_bot_token.id
   }
   secret_id = each.value
@@ -170,8 +157,8 @@ locals {
   web_image     = "${var.region}-docker.pkg.dev/${var.project_id}/flat-research/flatbot-web:latest"
   scraper_image = "${var.region}-docker.pkg.dev/${var.project_id}/flat-research/flatbot-scraper:latest"
   secrets_env = {
-    DATABASE_URL      = "${google_secret_manager_secret.database_url.id}/versions/latest"
-    JWT_SECRET_KEY    = "${google_secret_manager_secret.jwt_secret_key.id}/versions/latest"
+    DATABASE_URL       = "${google_secret_manager_secret.database_url.id}/versions/latest"
+    JWT_SECRET_KEY     = "${google_secret_manager_secret.jwt_secret_key.id}/versions/latest"
     TELEGRAM_BOT_TOKEN = "${google_secret_manager_secret.telegram_bot_token.id}/versions/latest"
   }
 }
@@ -231,17 +218,15 @@ resource "google_cloud_run_v2_service" "web" {
   depends_on = [
     google_secret_manager_secret_version.database_url,
     google_secret_manager_secret_version.jwt_secret_key,
-    google_secret_manager_secret_version.telegram_bot_token,
   ]
 
   lifecycle {
     ignore_changes = [
-      template[0].containers[0].image,  # Image updated by CI/CD
+      template[0].containers[0].image,
     ]
   }
 }
 
-# Allow unauthenticated access to the web service
 resource "google_cloud_run_v2_service_iam_member" "public" {
   name     = google_cloud_run_v2_service.web.name
   location = var.region
@@ -302,12 +287,11 @@ resource "google_cloud_run_v2_job" "scraper" {
   depends_on = [
     google_secret_manager_secret_version.database_url,
     google_secret_manager_secret_version.jwt_secret_key,
-    google_secret_manager_secret_version.telegram_bot_token,
   ]
 
   lifecycle {
     ignore_changes = [
-      template[0].template[0].containers[0].image,  # Image updated by CI/CD
+      template[0].template[0].containers[0].image,
     ]
   }
 }
@@ -317,7 +301,7 @@ resource "google_cloud_run_v2_job" "scraper" {
 resource "google_cloud_scheduler_job" "scraper" {
   name     = "flatbot-scraper-schedule"
   region   = var.region
-  schedule = "17 * * * *"  # Every hour at :17
+  schedule = "17 * * * *"
 
   http_target {
     http_method = "POST"
