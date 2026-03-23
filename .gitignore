@@ -11,3 +11,4 @@ flat-research.log
 node_modules/
 frontend/dist/
 static/
+.idea/

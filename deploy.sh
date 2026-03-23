@@ -1,15 +1,20 @@
 #!/bin/bash
 # =============================================================
-# Deploy Flat Research to GCP Cloud Run Jobs + Cloud Scheduler
+# Deploy FlatBot to GCP: Cloud Run Service + Job + Cloud SQL
 # =============================================================
 set -e
 
 PROJECT_ID="sandbox-hugo"
 REGION="northamerica-northeast1"  # Montreal
 SERVICE_ACCOUNT="flat-research@${PROJECT_ID}.iam.gserviceaccount.com"
-JOB_NAME="flat-research"
 REPO_NAME="flat-research"
-IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO_NAME}/${JOB_NAME}:latest"
+WEB_SERVICE="flatbot-web"
+SCRAPER_JOB="flatbot-scraper"
+DB_INSTANCE="flatbot-db"
+DB_NAME="flatbot"
+WEB_IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO_NAME}/flatbot-web:latest"
+SCRAPER_IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO_NAME}/flatbot-scraper:latest"
+DB_CONNECTION="${PROJECT_ID}:${REGION}:${DB_INSTANCE}"
 
 echo "=== 1. Enable required APIs ==="
 gcloud services enable \
@@ -17,174 +22,157 @@ gcloud services enable \
   artifactregistry.googleapis.com \
   cloudscheduler.googleapis.com \
   secretmanager.googleapis.com \
+  sqladmin.googleapis.com \
   --project="${PROJECT_ID}"
 
-echo "=== 2. Grant IAM roles to service account ==="
-for ROLE in roles/run.invoker roles/cloudscheduler.admin; do
-  gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
-    --member="serviceAccount:${SERVICE_ACCOUNT}" \
-    --role="${ROLE}" --quiet
-done
-
-echo "=== 2b. Enable Sheets/Drive APIs and grant SA domain-wide access ==="
-gcloud services enable \
-  sheets.googleapis.com \
-  drive.googleapis.com \
-  --project="${PROJECT_ID}"
-
-echo "=== 3. Create Artifact Registry repo ==="
+echo "=== 2. Create Artifact Registry repo ==="
 gcloud artifacts repositories create "${REPO_NAME}" \
   --repository-format=docker \
   --location="${REGION}" \
   --project="${PROJECT_ID}" \
   2>/dev/null || echo "Repo already exists"
 
-echo "=== 4. Build & push image via Cloud Build ==="
-gcloud builds submit \
-  --tag="${IMAGE}" \
+echo "=== 3. Create Cloud SQL instance ==="
+gcloud sql instances describe "${DB_INSTANCE}" \
+  --project="${PROJECT_ID}" >/dev/null 2>&1 || \
+gcloud sql instances create "${DB_INSTANCE}" \
+  --database-version=POSTGRES_16 \
+  --tier=db-f1-micro \
+  --region="${REGION}" \
   --project="${PROJECT_ID}" \
-  --region="${REGION}"
+  --storage-auto-increase \
+  --no-assign-ip \
+  --network=default
 
-echo "=== 6. Store secrets in Secret Manager ==="
-# Read .env safely (no shell execution)
+gcloud sql databases create "${DB_NAME}" \
+  --instance="${DB_INSTANCE}" \
+  --project="${PROJECT_ID}" \
+  2>/dev/null || echo "Database already exists"
+
+echo "=== 4. Set Cloud SQL password ==="
+# Read .env for secrets
 while IFS='=' read -r key value; do
   [[ -z "$key" || "$key" =~ ^# ]] && continue
   export "$key"="$value"
 done < .env
 
-# Create or update secrets
-echo -n "${TELEGRAM_BOT_TOKEN}" | gcloud secrets create telegram-bot-token \
-  --data-file=- --project="${PROJECT_ID}" 2>/dev/null || \
-echo -n "${TELEGRAM_BOT_TOKEN}" | gcloud secrets versions add telegram-bot-token \
-  --data-file=- --project="${PROJECT_ID}"
+DB_PASSWORD="${DB_PASSWORD:-$(openssl rand -hex 16)}"
+gcloud sql users set-password postgres \
+  --instance="${DB_INSTANCE}" \
+  --password="${DB_PASSWORD}" \
+  --project="${PROJECT_ID}"
 
-echo -n "${TELEGRAM_CHAT_ID}" | gcloud secrets create telegram-chat-id \
-  --data-file=- --project="${PROJECT_ID}" 2>/dev/null || \
-echo -n "${TELEGRAM_CHAT_ID}" | gcloud secrets versions add telegram-chat-id \
-  --data-file=- --project="${PROJECT_ID}"
+DATABASE_URL="postgresql://postgres:${DB_PASSWORD}@/${DB_NAME}?host=/cloudsql/${DB_CONNECTION}"
 
-echo -n "${GOOGLE_SPREADSHEET_ID}" | gcloud secrets create google-spreadsheet-id \
-  --data-file=- --project="${PROJECT_ID}" 2>/dev/null || \
-echo -n "${GOOGLE_SPREADSHEET_ID}" | gcloud secrets versions add google-spreadsheet-id \
-  --data-file=- --project="${PROJECT_ID}"
+echo "=== 5. Store secrets in Secret Manager ==="
+_upsert_secret() {
+  local name=$1 value=$2
+  echo -n "${value}" | gcloud secrets create "${name}" \
+    --data-file=- --project="${PROJECT_ID}" 2>/dev/null || \
+  echo -n "${value}" | gcloud secrets versions add "${name}" \
+    --data-file=- --project="${PROJECT_ID}"
+  gcloud secrets add-iam-policy-binding "${name}" \
+    --member="serviceAccount:${SERVICE_ACCOUNT}" \
+    --role="roles/secretmanager.secretAccessor" \
+    --project="${PROJECT_ID}" --quiet
+}
 
-# Grant service account access to secrets
-gcloud secrets add-iam-policy-binding google-spreadsheet-id \
-  --member="serviceAccount:${SERVICE_ACCOUNT}" \
-  --role="roles/secretmanager.secretAccessor" \
-  --project="${PROJECT_ID}" --quiet
+JWT_SECRET_KEY="${JWT_SECRET_KEY:-$(openssl rand -hex 32)}"
 
-gcloud secrets add-iam-policy-binding telegram-bot-token \
-  --member="serviceAccount:${SERVICE_ACCOUNT}" \
-  --role="roles/secretmanager.secretAccessor" \
-  --project="${PROJECT_ID}" --quiet
+_upsert_secret "database-url" "${DATABASE_URL}"
+_upsert_secret "jwt-secret-key" "${JWT_SECRET_KEY}"
+_upsert_secret "telegram-bot-token" "${TELEGRAM_BOT_TOKEN}"
 
-gcloud secrets add-iam-policy-binding telegram-chat-id \
-  --member="serviceAccount:${SERVICE_ACCOUNT}" \
-  --role="roles/secretmanager.secretAccessor" \
-  --project="${PROJECT_ID}" --quiet
+echo "=== 6. Grant IAM roles to service account ==="
+for ROLE in roles/run.invoker roles/cloudscheduler.admin roles/cloudsql.client; do
+  gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
+    --member="serviceAccount:${SERVICE_ACCOUNT}" \
+    --role="${ROLE}" --quiet
+done
 
-echo "=== 7. Create Cloud Run Job ==="
-gcloud run jobs create "${JOB_NAME}" \
-  --image="${IMAGE}" \
+echo "=== 7. Build & push images ==="
+gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
+
+docker build --target web -t "${WEB_IMAGE}" .
+docker push "${WEB_IMAGE}"
+
+docker build --target scraper -t "${SCRAPER_IMAGE}" .
+docker push "${SCRAPER_IMAGE}"
+
+SECRETS_FLAG="DATABASE_URL=database-url:latest,JWT_SECRET_KEY=jwt-secret-key:latest,TELEGRAM_BOT_TOKEN=telegram-bot-token:latest"
+
+echo "=== 8. Deploy web service ==="
+gcloud run deploy "${WEB_SERVICE}" \
+  --image="${WEB_IMAGE}" \
   --region="${REGION}" \
   --project="${PROJECT_ID}" \
   --service-account="${SERVICE_ACCOUNT}" \
-  --set-secrets="TELEGRAM_BOT_TOKEN=telegram-bot-token:latest,TELEGRAM_CHAT_ID=telegram-chat-id:latest,GOOGLE_SPREADSHEET_ID=google-spreadsheet-id:latest" \
+  --set-secrets="${SECRETS_FLAG}" \
+  --add-cloudsql-instances="${DB_CONNECTION}" \
+  --allow-unauthenticated \
+  --port=8080 \
+  --memory=512Mi \
+  --min-instances=0 \
+  --max-instances=3
+
+echo "=== 9. Deploy scraper job ==="
+gcloud run jobs create "${SCRAPER_JOB}" \
+  --image="${SCRAPER_IMAGE}" \
+  --region="${REGION}" \
+  --project="${PROJECT_ID}" \
+  --service-account="${SERVICE_ACCOUNT}" \
+  --set-secrets="${SECRETS_FLAG}" \
+  --set-cloudsql-instances="${DB_CONNECTION}" \
   --memory=512Mi \
   --task-timeout=300s \
   --max-retries=1 \
   2>/dev/null || \
-gcloud run jobs update "${JOB_NAME}" \
-  --image="${IMAGE}" \
+gcloud run jobs update "${SCRAPER_JOB}" \
+  --image="${SCRAPER_IMAGE}" \
   --region="${REGION}" \
   --project="${PROJECT_ID}" \
   --service-account="${SERVICE_ACCOUNT}" \
-  --set-secrets="TELEGRAM_BOT_TOKEN=telegram-bot-token:latest,TELEGRAM_CHAT_ID=telegram-chat-id:latest,GOOGLE_SPREADSHEET_ID=google-spreadsheet-id:latest" \
+  --set-secrets="${SECRETS_FLAG}" \
+  --set-cloudsql-instances="${DB_CONNECTION}" \
   --memory=512Mi \
   --task-timeout=300s \
   --max-retries=1
 
-echo "=== 8. Create Cloud Scheduler ==="
-gcloud scheduler jobs create http "${JOB_NAME}-schedule" \
+echo "=== 10. Create Cloud Scheduler (hourly scrape) ==="
+gcloud scheduler jobs create http "${SCRAPER_JOB}-schedule" \
   --location="${REGION}" \
   --schedule="17 * * * *" \
-  --uri="https://${REGION}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${PROJECT_ID}/jobs/${JOB_NAME}:run" \
+  --uri="https://${REGION}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${PROJECT_ID}/jobs/${SCRAPER_JOB}:run" \
   --http-method=POST \
   --oauth-service-account-email="${SERVICE_ACCOUNT}" \
   --project="${PROJECT_ID}" \
   2>/dev/null || \
-gcloud scheduler jobs update http "${JOB_NAME}-schedule" \
+gcloud scheduler jobs update http "${SCRAPER_JOB}-schedule" \
   --location="${REGION}" \
   --schedule="17 * * * *" \
-  --uri="https://${REGION}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${PROJECT_ID}/jobs/${JOB_NAME}:run" \
+  --uri="https://${REGION}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${PROJECT_ID}/jobs/${SCRAPER_JOB}:run" \
   --http-method=POST \
   --oauth-service-account-email="${SERVICE_ACCOUNT}" \
   --project="${PROJECT_ID}"
 
-echo "=== 9. Create daily health check scheduler ==="
-gcloud scheduler jobs create http "${JOB_NAME}-healthcheck" \
-  --location="${REGION}" \
-  --schedule="0 8 * * *" \
-  --uri="https://${REGION}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${PROJECT_ID}/jobs/${JOB_NAME}:run" \
-  --http-method=POST \
-  --message-body='{"overrides":{"containerOverrides":[{"args":["--check"]}]}}' \
-  --headers="Content-Type=application/json" \
-  --oauth-service-account-email="${SERVICE_ACCOUNT}" \
-  --project="${PROJECT_ID}" \
-  2>/dev/null || \
-gcloud scheduler jobs update http "${JOB_NAME}-healthcheck" \
-  --location="${REGION}" \
-  --schedule="0 8 * * *" \
-  --uri="https://${REGION}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${PROJECT_ID}/jobs/${JOB_NAME}:run" \
-  --http-method=POST \
-  --message-body='{"overrides":{"containerOverrides":[{"args":["--check"]}]}}' \
-  --headers="Content-Type=application/json" \
-  --oauth-service-account-email="${SERVICE_ACCOUNT}" \
-  --project="${PROJECT_ID}"
-
-echo "=== 10. Smoke test ==="
-echo "Running health check on Cloud Run..."
-gcloud run jobs execute "${JOB_NAME}" \
+echo "=== 11. Run Alembic migration ==="
+# Run migration via a one-off Cloud Run job execution
+gcloud run jobs execute "${SCRAPER_JOB}" \
   --region="${REGION}" \
   --project="${PROJECT_ID}" \
-  --args="--check" \
-  --wait
+  --args="alembic,upgrade,head" \
+  --wait || echo "Migration may need manual run"
 
-EXECUTION_STATUS=$(gcloud run jobs executions list \
-  --job="${JOB_NAME}" \
+WEB_URL=$(gcloud run services describe "${WEB_SERVICE}" \
   --region="${REGION}" \
   --project="${PROJECT_ID}" \
-  --limit=1 \
-  --format="value(status.conditions[0].type)")
-
-if [ "${EXECUTION_STATUS}" = "Completed" ]; then
-  echo "Smoke test PASSED"
-else
-  echo "WARNING: Smoke test may have failed. Check logs:"
-  echo "  gcloud run jobs executions list --job=${JOB_NAME} --region=${REGION} --project=${PROJECT_ID}"
-fi
-
-echo "=== 11. Enable monitoring and create alert policy ==="
-gcloud services enable monitoring.googleapis.com --project="${PROJECT_ID}"
-
-# Create alert policy for failed Cloud Run Job executions
-# Uses gcloud alpha — falls back gracefully if not available
-gcloud alpha monitoring policies create \
-  --display-name="Flat Research Job Failed" \
-  --condition-display-name="Cloud Run Job execution failed" \
-  --condition-filter='resource.type="cloud_run_job" AND resource.labels.job_name="flat-research" AND metric.type="run.googleapis.com/job/completed_execution_count" AND metric.labels.result="failed"' \
-  --condition-threshold-value=1 \
-  --condition-threshold-comparison=COMPARISON_GT \
-  --condition-threshold-duration=0s \
-  --condition-threshold-aggregation='{"alignmentPeriod":"300s","perSeriesAligner":"ALIGN_SUM"}' \
-  --combiner=OR \
-  --project="${PROJECT_ID}" \
-  2>/dev/null || echo "Alert policy already exists or gcloud alpha not available — create manually in Cloud Monitoring console"
+  --format="value(status.url)")
 
 echo ""
 echo "=== Done! ==="
-echo "Job: https://console.cloud.google.com/run/jobs/details/${REGION}/${JOB_NAME}?project=${PROJECT_ID}"
+echo "Web app: ${WEB_URL}"
+echo "Scraper job: https://console.cloud.google.com/run/jobs/details/${REGION}/${SCRAPER_JOB}?project=${PROJECT_ID}"
 echo "Scheduler: https://console.cloud.google.com/cloudscheduler?project=${PROJECT_ID}"
+echo "Cloud SQL: https://console.cloud.google.com/sql/instances/${DB_INSTANCE}?project=${PROJECT_ID}"
 echo ""
-echo "Manual run: gcloud run jobs execute ${JOB_NAME} --region=${REGION} --project=${PROJECT_ID}"
+echo "Manual scrape: gcloud run jobs execute ${SCRAPER_JOB} --region=${REGION} --project=${PROJECT_ID}"

@@ -9,8 +9,6 @@ description = "Montreal apartment finder - scrapes Kijiji & Centris, tracks in G
 requires-python = ">=3.12"
 dependencies = [
     "beautifulsoup4>=4.14.3",
-    "google-auth>=2.49.0",
-    "gspread>=6.2.1",
     "python-dotenv>=1.2.2",
     "pyyaml>=6.0.3",
     "requests>=2.32.5",

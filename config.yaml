@@ -1,68 +1,38 @@
 # =============================================================
-# Flat Research - Configuration
+# FlatBot - Default neighbourhood variants
 # =============================================================
+# This file is used as reference for available neighbourhoods
+# and their search variants. User criteria are stored in the database.
 
-# --- Criteres de recherche ---
-criteria:
-  neighbourhoods:
-    Villeray:
-      - villeray
-      - saint-michel
-      - parc-extension
-      - parc extension
-    Mile-Ex:
-      - mile-ex
-      - mile ex
-      - marconi-alexandra
-    Mile-End:
-      - mile-end
-      - mile end
-    Plateau:
-      - plateau
-      - plateau-mont-royal
-      - plateau mont-royal
-    Petite-Patrie:
-      - petite-patrie
-      - petite patrie
-      - la petite-patrie
-    Rosemont:
-      - rosemont
-    Petite-Italie:
-      - petite-italie
-      - petite italie
-      - little italy
-      - jean-talon
-    Ahuntsic:
-      - ahuntsic
-      - cartierville
-      - sault-au-récollet
-  bedrooms_min: 3
-  # bedrooms_max: 5          # optionnel
-  price_min: 2000
-  price_max: 3000
-  furnished: true
-  parking: false
-  # move_in_before: "2026-09-01"  # optionnel — YYYY-MM-DD
-
-# --- Sources ---
-sources:
-  - kijiji
-  - centris
-  - rentals
-
-# --- Google Sheets ---
-# Auth via Application Default Credentials (ADC) - no key file needed.
-# Run: gcloud auth application-default login
-google_sheets:
-  spreadsheet_name: "Flat Research - Montreal"
-  spreadsheet_id: "${GOOGLE_SPREADSHEET_ID}"
-
-# --- Telegram ---
-telegram:
-  bot_token: "${TELEGRAM_BOT_TOKEN}"   # Loaded from .env
-  chat_id: "${TELEGRAM_CHAT_ID}"       # Loaded from .env
-
-# --- Scheduling ---
-schedule:
-  interval_minutes: 60
-  timeout_seconds: 240    # Python-side timeout (Cloud Run hard limit is 300s)
+neighbourhoods:
+  Villeray:
+    - villeray
+    - saint-michel
+    - parc-extension
+    - parc extension
+  Mile-Ex:
+    - mile-ex
+    - mile ex
+    - marconi-alexandra
+  Mile-End:
+    - mile-end
+    - mile end
+  Plateau:
+    - plateau
+    - plateau-mont-royal
+    - plateau mont-royal
+  Petite-Patrie:
+    - petite-patrie
+    - petite patrie
+    - la petite-patrie
+  Rosemont:
+    - rosemont
+  Petite-Italie:
+    - petite-italie
+    - petite italie
+    - little italy
+    - jean-talon
+  Ahuntsic:
+    - ahuntsic
+    - cartierville
+    - sault-au-récollet
