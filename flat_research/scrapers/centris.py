@@ -15,7 +15,6 @@ from flat_research.parsing import (
     extract_bedrooms_from_text,
     extract_move_in_date,
     is_move_in_past,
-    matches_criteria,
 )
 
 logger = logging.getLogger(__name__)
@@ -173,10 +172,9 @@ def scrape(config: dict, session=None) -> list[Listing]:
                 listing = _parse_card(card)
                 if listing and listing.listing_id not in seen_ids:
                     seen_ids.add(listing.listing_id)
-                    if matches_criteria(listing, config):
-                        listings.append(listing)
+                    listings.append(listing)
             except Exception as e:
                 logger.warning(f"Error parsing Centris card: {e}")
 
-    logger.info(f"Centris: {len(listings)} listings match criteria")
+    logger.info(f"Centris: {len(listings)} listings parsed")
     return listings

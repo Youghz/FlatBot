@@ -18,7 +18,6 @@ from flat_research.parsing import (
     extract_move_in_date,
     has_furnished_negation,
     is_move_in_past,
-    matches_criteria,
 )
 
 logger = logging.getLogger(__name__)
@@ -176,13 +175,11 @@ def scrape(config: dict, session=None) -> list[Listing]:
                 listing_id=f"kijiji_{lid}",
                 move_in_date=move_in_date,
             )
-
-            if matches_criteria(listing, config):
-                listings.append(listing)
+            listings.append(listing)
 
         except Exception as e:
             logger.warning(f"Error parsing Kijiji item: {e}")
             continue
 
-    logger.info(f"Kijiji: {len(listings)} listings match criteria")
+    logger.info(f"Kijiji: {len(listings)} listings parsed")
     return listings

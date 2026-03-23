@@ -14,6 +14,15 @@ dependencies = [
     "python-dotenv>=1.2.2",
     "pyyaml>=6.0.3",
     "requests>=2.32.5",
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.30.0",
+    "python-multipart>=0.0.9",
+    "sqlalchemy>=2.0.0",
+    "psycopg2-binary>=2.9.0",
+    "alembic>=1.13.0",
+    "bcrypt>=4.0.0",
+    "pydantic[email]>=2.0.0",
+    "python-jose[cryptography]>=3.3.0",
 ]
 
 [project.scripts]
@@ -21,6 +30,7 @@ flat-research = "flat_research.__main__:main"
 
 [dependency-groups]
 dev = [
+    "httpx>=0.27.0",
     "pre-commit>=4.2.0",
     "pytest>=9.0.2",
     "ruff>=0.15.5",
@@ -43,7 +53,9 @@ select = [
 ignore = [
     "S101",  # assert in tests is fine
     "S603",  # subprocess calls (not used but just in case)
+    "UP017", # datetime.UTC alias not available in Python 3.14 yet
 ]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S"]
+"flat_research/api/**" = ["B008"]  # Depends() in defaults is standard FastAPI

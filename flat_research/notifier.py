@@ -10,19 +10,16 @@ logger = logging.getLogger(__name__)
 TELEGRAM_API = "https://api.telegram.org/bot{token}/sendMessage"
 
 
-def send_notification(new_listings: list, sheet_url: str, config: dict) -> None:
-    """Send a Telegram message for each new listing found."""
-    token = config["telegram"]["bot_token"]
-    chat_id = config["telegram"]["chat_id"]
-
-    if not token or not chat_id:
+def send_notification(new_listings: list, chat_id: str, bot_token: str, dashboard_url: str = "") -> None:
+    """Send a Telegram message with new listings to a specific chat."""
+    if not bot_token or not chat_id:
         logger.warning("Telegram bot_token or chat_id not configured. Skipping notification.")
         return
 
-    url = TELEGRAM_API.format(token=token)
-
     if not new_listings:
         return
+
+    url = TELEGRAM_API.format(token=bot_token)
 
     summary = f"<b>{len(new_listings)} nouveau(x) logement(s) trouve(s)!</b>\n\n"
 
@@ -40,7 +37,8 @@ def send_notification(new_listings: list, sheet_url: str, config: dict) -> None:
             f'<a href="{listing.url}">Voir l\'annonce</a> ({listing.source})\n\n'
         )
 
-    summary += f'<a href="{sheet_url}">Voir le Google Sheet</a>'
+    if dashboard_url:
+        summary += f'<a href="{dashboard_url}">Voir le dashboard</a>'
 
     # Telegram has a 4096 char limit per message
     messages = []

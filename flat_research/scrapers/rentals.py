@@ -8,7 +8,7 @@ import logging
 
 from flat_research.http_client import create_session
 from flat_research.models import Listing
-from flat_research.parsing import check_furnished_parking, matches_criteria
+from flat_research.parsing import check_furnished_parking
 
 logger = logging.getLogger(__name__)
 
@@ -236,8 +236,7 @@ def scrape(config: dict, session=None) -> list[Listing]:
                 listing = _node_to_listing(node)
                 if listing and listing.listing_id not in seen_ids:
                     seen_ids.add(listing.listing_id)
-                    if matches_criteria(listing, config):
-                        listings.append(listing)
+                    listings.append(listing)
             except Exception as e:
                 logger.warning(f"Error parsing Rentals.ca listing: {e}")
 
@@ -246,5 +245,5 @@ def scrape(config: dict, session=None) -> list[Listing]:
             break
         cursor = page_info.get("endCursor")
 
-    logger.info(f"Rentals.ca: {len(listings)} listings match criteria")
+    logger.info(f"Rentals.ca: {len(listings)} listings parsed")
     return listings
