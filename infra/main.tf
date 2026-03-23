@@ -68,8 +68,8 @@ resource "google_sql_database_instance" "db" {
     availability_type = "ZONAL"
 
     ip_configuration {
-      ipv4_enabled    = true
-      require_ssl     = true
+      ipv4_enabled = true
+      ssl_mode     = "ENCRYPTED_ONLY"
     }
 
     password_validation_policy {
