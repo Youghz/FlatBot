@@ -31,6 +31,7 @@ class User(Base):
     email = Column(String(255), unique=True, nullable=False, index=True)
     password_hash = Column(String(255), nullable=False)
     telegram_chat_id = Column(String(64), nullable=True)
+    telegram_link_code = Column(String(10), nullable=True, unique=True, index=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     is_active = Column(Boolean, default=True)
 
