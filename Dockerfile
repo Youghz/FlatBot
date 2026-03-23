@@ -30,4 +30,5 @@ FROM python:3.12-slim AS scraper
 WORKDIR /app
 COPY --from=backend-build /app ./
 COPY config.yaml ./
-ENTRYPOINT [".venv/bin/python", "-m", "flat_research", "--scrape-multi"]
+ENTRYPOINT [".venv/bin/python", "-m", "flat_research"]
+CMD ["--scrape-multi"]
