@@ -15,6 +15,7 @@ from flat_research.db import (
     get_db,
     get_seen_listing_ids,
     mark_listings_seen,
+    save_listings,
 )
 from flat_research.http_client import create_session
 from flat_research.models import Listing
@@ -105,6 +106,10 @@ def run_multi_user() -> bool:
         if not all_listings:
             logger.info("No listings scraped this cycle.")
             return True
+
+        # Save all scraped listings to DB
+        save_listings(db, all_listings)
+        logger.info("Listings saved to DB")
 
         bot_token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
         notified_count = 0
