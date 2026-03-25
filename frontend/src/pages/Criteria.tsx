@@ -20,7 +20,7 @@ export default function Criteria() {
   const [bedroomsMax, setBedroomsMax] = useState<number | ''>('');
   const [furnished, setFurnished] = useState(false);
   const [parking, setParking] = useState(false);
-  const [moveInBefore, setMoveInBefore] = useState('');
+  const [moveInAfter, setMoveInAfter] = useState('');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -37,7 +37,7 @@ export default function Criteria() {
         setBedroomsMax(data.bedrooms_max ?? '');
         setFurnished(data.furnished);
         setParking(data.parking);
-        setMoveInBefore(data.move_in_before || '');
+        setMoveInAfter(data.move_in_after || '');
       })
       .finally(() => setLoading(false));
   }, []);
@@ -72,7 +72,7 @@ export default function Criteria() {
         bedrooms_max: bedroomsMax || null,
         furnished,
         parking,
-        move_in_before: moveInBefore || null,
+        move_in_after: moveInAfter || null,
       }),
     });
     setSaving(false);
@@ -128,8 +128,8 @@ export default function Criteria() {
         </div>
 
         <div style={{ marginBottom: '1.5rem' }}>
-          <label>Emménagement avant</label>
-          <input type="date" value={moveInBefore} onChange={e => setMoveInBefore(e.target.value)} style={{ width: '100%' }} />
+          <label>Emménagement après le</label>
+          <input type="date" value={moveInAfter} onChange={e => setMoveInAfter(e.target.value)} style={{ width: '100%' }} />
         </div>
 
         <button type="submit" disabled={saving} style={{ width: '100%' }}>

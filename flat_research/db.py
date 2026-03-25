@@ -51,7 +51,7 @@ class SearchCriteria(Base):
     bedrooms_max = Column(Integer, nullable=True)
     furnished = Column(Boolean, nullable=False, default=False)
     parking = Column(Boolean, nullable=False, default=False)
-    move_in_before = Column(Date, nullable=True)
+    move_in_after = Column(Date, nullable=True)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     user = relationship("User", back_populates="criteria")
@@ -130,8 +130,8 @@ def criteria_to_config(criteria: SearchCriteria) -> dict:
     }
     if criteria.bedrooms_max is not None:
         config["criteria"]["bedrooms_max"] = criteria.bedrooms_max
-    if criteria.move_in_before is not None:
-        config["criteria"]["move_in_before"] = criteria.move_in_before.isoformat()
+    if criteria.move_in_after is not None:
+        config["criteria"]["move_in_after"] = criteria.move_in_after.isoformat()
     return config
 
 

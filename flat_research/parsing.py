@@ -298,14 +298,15 @@ def matches_criteria(listing, config: dict) -> bool:
     if criteria.get("parking") and not listing.parking:
         return False
 
-    # Move-in date (optional upper bound)
-    move_in_before = criteria.get("move_in_before")
-    if move_in_before and listing.move_in_date:
+    # Move-in date — exclude listings with move-in date before this threshold
+    # (filters out outdated/past listings)
+    move_in_after = criteria.get("move_in_after")
+    if move_in_after and listing.move_in_date:
         if listing.move_in_date != "immediate":
             try:
                 move_date = datetime.strptime(listing.move_in_date, "%Y-%m-%d").date()
-                limit_date = datetime.strptime(move_in_before, "%Y-%m-%d").date()
-                if move_date > limit_date:
+                limit_date = datetime.strptime(move_in_after, "%Y-%m-%d").date()
+                if move_date < limit_date:
                     return False
             except ValueError:
                 pass
