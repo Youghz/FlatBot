@@ -110,8 +110,9 @@ def main():
         sys.exit(0 if ok else 1)
 
     if args.migrate:
-        from alembic import command
         from alembic.config import Config
+
+        from alembic import command
 
         alembic_cfg = Config("alembic.ini")
         command.upgrade(alembic_cfg, "head")
