@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 name = "flat-research"
 version = "0.1.0"
 description = "Montreal apartment finder - scrapes Kijiji & Centris, tracks in Google Sheets, notifies via Telegram"
-requires-python = ">=3.12"
+requires-python = ">=3.12,<3.14"
 dependencies = [
     "beautifulsoup4>=4.14.3",
     "python-dotenv>=1.2.2",
