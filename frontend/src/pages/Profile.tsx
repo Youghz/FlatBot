@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { type FormEvent, useEffect, useState } from 'react';
 import { apiFetch } from '../api';
 
 export default function Profile() {
@@ -8,6 +8,11 @@ export default function Profile() {
   const [botUsername, setBotUsername] = useState('');
   const [linking, setLinking] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [pwdChanging, setPwdChanging] = useState(false);
+  const [pwdMessage, setPwdMessage] = useState('');
+  const [pwdError, setPwdError] = useState('');
 
   useEffect(() => {
     apiFetch('/me')
@@ -72,6 +77,43 @@ export default function Profile() {
             </button>
           </>
         )}
+      </div>
+
+      <div style={{ marginTop: '2rem', padding: '1rem', border: '1px solid #ddd', borderRadius: 8 }}>
+        <h2 style={{ marginTop: 0 }}>Mot de passe</h2>
+        <form onSubmit={async (e: FormEvent) => {
+          e.preventDefault();
+          setPwdChanging(true);
+          setPwdMessage('');
+          setPwdError('');
+          const res = await apiFetch('/me/password', {
+            method: 'POST',
+            body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+          });
+          if (res.ok) {
+            setPwdMessage('Mot de passe modifié');
+            setCurrentPassword('');
+            setNewPassword('');
+          } else {
+            const data = await res.json();
+            setPwdError(data.detail || 'Erreur');
+          }
+          setPwdChanging(false);
+        }}>
+          <div style={{ marginBottom: '0.75rem' }}>
+            <label>Mot de passe actuel</label>
+            <input type="password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} required style={{ width: '100%' }} />
+          </div>
+          <div style={{ marginBottom: '0.75rem' }}>
+            <label>Nouveau mot de passe (8 car. min.)</label>
+            <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} required minLength={8} style={{ width: '100%' }} />
+          </div>
+          {pwdError && <p style={{ color: 'red' }}>{pwdError}</p>}
+          {pwdMessage && <p style={{ color: 'green' }}>{pwdMessage}</p>}
+          <button type="submit" disabled={pwdChanging}>
+            {pwdChanging ? 'Modification...' : 'Changer le mot de passe'}
+          </button>
+        </form>
       </div>
     </div>
   );
