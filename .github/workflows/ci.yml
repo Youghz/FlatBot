@@ -79,14 +79,6 @@ jobs:
           docker push "$IMAGE:${{ github.sha }}"
           docker push "$IMAGE:latest"
 
-      - name: Run Alembic migration
-        run: |
-          gcloud run jobs execute ${{ env.SCRAPER_JOB }} \
-            --region="${{ env.REGION }}" \
-            --project="${{ env.PROJECT_ID }}" \
-            --args="alembic,upgrade,head" \
-            --wait
-
       - name: Deploy web service
         run: |
           gcloud run deploy ${{ env.WEB_SERVICE }} \
@@ -102,6 +94,14 @@ jobs:
             --image="${{ env.REGISTRY }}/flatbot-scraper:${{ github.sha }}" \
             --region="${{ env.REGION }}" \
             --project="${{ env.PROJECT_ID }}"
+
+      - name: Run Alembic migration
+        run: |
+          gcloud run jobs execute ${{ env.SCRAPER_JOB }} \
+            --region="${{ env.REGION }}" \
+            --project="${{ env.PROJECT_ID }}" \
+            --args="--migrate" \
+            --wait
 
       - name: Cleanup old images (keep latest only)
         run: |
