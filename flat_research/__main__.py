@@ -91,6 +91,7 @@ def main():
     parser.add_argument("--scrape-multi", action="store_true", help="Run multi-user scrape cycle (DB-based)")
     parser.add_argument("--check", action="store_true", help="Run health checks and exit")
     parser.add_argument("--migrate", action="store_true", help="Run Alembic migrations and exit")
+    parser.add_argument("--reset-password", nargs=2, metavar=("EMAIL", "NEW_PASSWORD"), help="Reset a user's password")
     args = parser.parse_args()
 
     if args.serve:
@@ -117,6 +118,22 @@ def main():
         alembic_cfg = Config("alembic.ini")
         command.upgrade(alembic_cfg, "head")
         logger.info("Migration complete")
+        return
+
+    if args.reset_password:
+        from flat_research.auth import hash_password
+        from flat_research.db import User, get_db
+
+        email, new_password = args.reset_password
+        db = get_db()
+        user = db.query(User).filter(User.email == email).first()
+        if not user:
+            logger.error(f"User {email} not found")
+            sys.exit(1)
+        user.password_hash = hash_password(new_password)
+        db.commit()
+        logger.info(f"Password reset for {email}")
+        db.close()
         return
 
     if args.check:
