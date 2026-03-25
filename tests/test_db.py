@@ -56,17 +56,17 @@ class TestCriteriaToConfig:
         config = criteria_to_config(criteria)
 
         assert "bedrooms_max" not in config["criteria"]
-        assert "move_in_before" not in config["criteria"]
+        assert "move_in_after" not in config["criteria"]
 
     def test_optional_fields_present(self, db_session):
         from datetime import date
 
         user = _create_user(db_session)
-        criteria = _create_criteria(db_session, user, bedrooms_max=5, move_in_before=date(2026, 9, 1))
+        criteria = _create_criteria(db_session, user, bedrooms_max=5, move_in_after=date(2026, 9, 1))
         config = criteria_to_config(criteria)
 
         assert config["criteria"]["bedrooms_max"] == 5
-        assert config["criteria"]["move_in_before"] == "2026-09-01"
+        assert config["criteria"]["move_in_after"] == "2026-09-01"
 
 
 class TestActiveUsers:

@@ -20,7 +20,7 @@ class CriteriaResponse(BaseModel):
     bedrooms_max: int | None
     furnished: bool
     parking: bool
-    move_in_before: date | None
+    move_in_after: date | None
     updated_at: datetime | None
 
     model_config = {"from_attributes": True}
@@ -34,7 +34,7 @@ class CriteriaUpdate(BaseModel):
     bedrooms_max: int | None = None
     furnished: bool | None = None
     parking: bool | None = None
-    move_in_before: date | None = None
+    move_in_after: date | None = None
 
 
 @router.get("", response_model=CriteriaResponse)

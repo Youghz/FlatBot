@@ -166,18 +166,18 @@ class TestMatchesCriteria:
         listing = self._make_listing(parking=True)
         assert matches_criteria(listing, config) is True
 
-    def test_move_in_before_ok(self):
-        config = {"criteria": {**self.CONFIG["criteria"], "move_in_before": "2026-09-01"}}
+    def test_move_in_after_keeps_future(self):
+        config = {"criteria": {**self.CONFIG["criteria"], "move_in_after": "2026-06-01"}}
         listing = self._make_listing(move_in_date="2026-07-01")
         assert matches_criteria(listing, config) is True
 
-    def test_move_in_before_too_late(self):
-        config = {"criteria": {**self.CONFIG["criteria"], "move_in_before": "2026-09-01"}}
-        listing = self._make_listing(move_in_date="2026-10-01")
+    def test_move_in_after_filters_past(self):
+        config = {"criteria": {**self.CONFIG["criteria"], "move_in_after": "2026-06-01"}}
+        listing = self._make_listing(move_in_date="2026-03-01")
         assert matches_criteria(listing, config) is False
 
-    def test_move_in_before_immediate_ok(self):
-        config = {"criteria": {**self.CONFIG["criteria"], "move_in_before": "2026-09-01"}}
+    def test_move_in_after_immediate_ok(self):
+        config = {"criteria": {**self.CONFIG["criteria"], "move_in_after": "2026-06-01"}}
         listing = self._make_listing(move_in_date="immediate")
         assert matches_criteria(listing, config) is True
 
