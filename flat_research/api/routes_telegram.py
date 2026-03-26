@@ -5,11 +5,13 @@ import os
 import secrets
 import string
 
-from fastapi import APIRouter, Depends, Request
+import requests as requests_lib
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from flat_research.api.dependencies import get_current_user, get_db
+from flat_research.api.rate_limit import limiter
 from flat_research.db import User
 
 logger = logging.getLogger(__name__)
@@ -39,8 +41,16 @@ def generate_telegram_code(user: User = Depends(get_current_user), db: Session =
 
 
 @router.post("/api/telegram/webhook")
+@limiter.limit("10/minute")
 async def telegram_webhook(request: Request, db: Session = Depends(get_db)):
     """Receive messages from Telegram. Handles /start and /link CODE."""
+    # Verify Telegram webhook secret token
+    expected_secret = os.environ.get("TELEGRAM_WEBHOOK_SECRET", "")
+    if expected_secret:
+        provided_secret = request.headers.get("X-Telegram-Bot-Api-Secret-Token", "")
+        if provided_secret != expected_secret:
+            raise HTTPException(status_code=403, detail="Invalid webhook secret")
+
     body = await request.json()
 
     message = body.get("message", {})
@@ -88,13 +98,11 @@ async def telegram_webhook(request: Request, db: Session = Depends(get_db)):
 def _reply(bot_token: str, chat_id: str, text: str) -> None:
     if not bot_token:
         return
-    import requests
-
     try:
-        requests.post(
+        requests_lib.post(
             f"https://api.telegram.org/bot{bot_token}/sendMessage",
             json={"chat_id": int(chat_id), "text": text},
             timeout=10,
         )
-    except Exception as e:
+    except requests_lib.RequestException as e:
         logger.error(f"Telegram reply failed: {e}")

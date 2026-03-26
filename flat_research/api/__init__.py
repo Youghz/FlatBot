@@ -1,12 +1,15 @@
 """FastAPI application factory."""
 
+import os
 from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+from slowapi.errors import RateLimitExceeded
 
+from flat_research.api.rate_limit import limiter, rate_limit_handler
 from flat_research.api.routes_auth import router as auth_router
 from flat_research.api.routes_criteria import router as criteria_router
 from flat_research.api.routes_listings import router as listings_router
@@ -18,13 +21,16 @@ STATIC_DIR = Path(__file__).resolve().parent.parent.parent / "static"
 
 def create_app() -> FastAPI:
     app = FastAPI(title="FlatBot", version="0.2.0")
+    app.state.limiter = limiter
+    app.add_exception_handler(RateLimitExceeded, rate_limit_handler)
 
+    cors_origins = os.environ.get("CORS_ORIGINS", "http://localhost:5173").split(",")
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["http://localhost:5173"],  # Vite dev server
+        allow_origins=cors_origins,
         allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
+        allow_methods=["GET", "POST", "PUT", "DELETE"],
+        allow_headers=["Authorization", "Content-Type"],
     )
 
     app.include_router(auth_router)

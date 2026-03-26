@@ -24,7 +24,10 @@ export default function Dashboard() {
 
   useEffect(() => {
     apiFetch('/listings?limit=50')
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
       .then(data => {
         setListings(data.listings);
         setTotal(data.total);

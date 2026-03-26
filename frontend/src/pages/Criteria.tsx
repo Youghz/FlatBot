@@ -27,7 +27,10 @@ export default function Criteria() {
 
   useEffect(() => {
     apiFetch('/criteria')
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
       .then(data => {
         const hoods = Object.keys(data.neighbourhoods || {});
         setSelectedHoods(new Set(hoods));

@@ -18,17 +18,21 @@ RUN uv sync --frozen --no-dev
 
 # Stage 3: Web service (API + static frontend)
 FROM python:3.12-slim AS web
+RUN groupadd -r appuser && useradd -r -g appuser appuser
 WORKDIR /app
 COPY --from=backend-build /app ./
 COPY --from=frontend-build /app/frontend/dist ./static
 COPY config.yaml ./
+USER appuser
 EXPOSE 8080
 ENTRYPOINT [".venv/bin/python", "-m", "flat_research", "--serve"]
 
 # Stage 4: Scraper job
 FROM python:3.12-slim AS scraper
+RUN groupadd -r appuser && useradd -r -g appuser appuser
 WORKDIR /app
 COPY --from=backend-build /app ./
 COPY config.yaml ./
+USER appuser
 ENTRYPOINT [".venv/bin/python", "-m", "flat_research"]
 CMD ["--scrape-multi"]
