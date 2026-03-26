@@ -93,7 +93,8 @@ jobs:
           gcloud run jobs update ${{ env.SCRAPER_JOB }} \
             --image="${{ env.REGISTRY }}/flatbot-scraper:${{ github.sha }}" \
             --region="${{ env.REGION }}" \
-            --project="${{ env.PROJECT_ID }}"
+            --project="${{ env.PROJECT_ID }}" \
+            --set-env-vars="RENTALS_GQL_KEY=${{ secrets.RENTALS_GQL_KEY }}"
 
       - name: Run Alembic migration
         run: |
@@ -101,6 +102,14 @@ jobs:
             --region="${{ env.REGION }}" \
             --project="${{ env.PROJECT_ID }}" \
             --args="--migrate" \
+            --wait
+
+      - name: Smoke test scraper connections
+        run: |
+          gcloud run jobs execute ${{ env.SCRAPER_JOB }} \
+            --region="${{ env.REGION }}" \
+            --project="${{ env.PROJECT_ID }}" \
+            --args="--check" \
             --wait
 
       - name: Cleanup old images (keep latest only)

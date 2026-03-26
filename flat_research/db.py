@@ -1,7 +1,7 @@
 """Database models and session management."""
 
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import (
     JSON,
@@ -32,7 +32,7 @@ class User(Base):
     password_hash = Column(String(255), nullable=False)
     telegram_chat_id = Column(String(64), nullable=True)
     telegram_link_code = Column(String(10), nullable=True, unique=True, index=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     is_active = Column(Boolean, default=True)
 
     criteria = relationship("SearchCriteria", back_populates="user", uselist=False, cascade="all, delete-orphan")
@@ -52,7 +52,9 @@ class SearchCriteria(Base):
     furnished = Column(Boolean, nullable=False, default=False)
     parking = Column(Boolean, nullable=False, default=False)
     move_in_after = Column(Date, nullable=True)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = Column(
+        DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc)
+    )
 
     user = relationship("User", back_populates="criteria")
 
@@ -73,7 +75,7 @@ class ListingRecord(Base):
     parking = Column(Boolean, nullable=False, default=False)
     description = Column(Text, nullable=False, default="")
     move_in_date = Column(String(20), nullable=False, default="")
-    scraped_at = Column(DateTime, default=datetime.utcnow)
+    scraped_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     seen_by = relationship("SeenListing", back_populates="listing")
 
@@ -85,7 +87,7 @@ class SeenListing(Base):
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     listing_id = Column(String(255), ForeignKey("listings.listing_id", ondelete="CASCADE"), nullable=False)
-    notified_at = Column(DateTime, default=datetime.utcnow)
+    notified_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     user = relationship("User", back_populates="seen_listings")
     listing = relationship("ListingRecord", back_populates="seen_by")

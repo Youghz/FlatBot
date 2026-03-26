@@ -5,6 +5,9 @@ to obtain a JWT, then queries rentalListings with price/bedroom filters.
 """
 
 import logging
+import os
+
+import requests
 
 from flat_research.http_client import create_session
 from flat_research.models import Listing
@@ -13,7 +16,7 @@ from flat_research.parsing import check_furnished_parking
 logger = logging.getLogger(__name__)
 
 RENTALS_GQL_URL = "https://rentals.ca/graphql"
-RENTALS_GQL_KEY = "kJFM-mm4c-xg6B-qiwy"
+RENTALS_GQL_KEY = os.environ.get("RENTALS_GQL_KEY", "")
 RENTALS_BASE = "https://rentals.ca"
 MAX_RESULTS = 50
 
@@ -60,7 +63,7 @@ query SearchListings(
 """
 
 
-def _authenticate(session) -> str:
+def _authenticate(session: requests.Session) -> str:
     """Acquire a JWT access token from the Rentals.ca GraphQL API."""
     payload = {
         "query": _AUTH_MUTATION,
@@ -172,7 +175,7 @@ def _node_to_listing(node: dict) -> Listing | None:
     )
 
 
-def scrape(config: dict, session=None) -> list[Listing]:
+def scrape(config: dict, session: requests.Session | None = None) -> list[Listing]:
     """Scrape Rentals.ca for matching rental listings."""
     listings = []
     criteria = config["criteria"]
@@ -215,7 +218,7 @@ def scrape(config: dict, session=None) -> list[Listing]:
             resp = session.post(RENTALS_GQL_URL, json=payload, headers=headers, timeout=30)
             resp.raise_for_status()
             data = resp.json()
-        except Exception as e:
+        except (requests.RequestException, ValueError) as e:
             logger.error(f"Rentals.ca GraphQL request failed: {e}")
             break
 

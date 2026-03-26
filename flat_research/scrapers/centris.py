@@ -6,6 +6,7 @@ path-based filter convention and parse the HTML cards directly.
 
 import logging
 
+import requests
 from bs4 import BeautifulSoup
 
 from flat_research.http_client import create_session, get
@@ -145,7 +146,7 @@ def _parse_card(card) -> Listing | None:
     )
 
 
-def scrape(config: dict, session=None) -> list[Listing]:
+def scrape(config: dict, session: requests.Session | None = None) -> list[Listing]:
     """Scrape Centris for matching rental listings."""
     listings = []
     seen_ids = set()

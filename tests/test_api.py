@@ -10,7 +10,10 @@ from flat_research.api.dependencies import get_db
 @pytest.fixture
 def client(db_session):
     """FastAPI test client wired to the SQLite test DB."""
+    from flat_research.api.rate_limit import limiter
+
     app = create_app()
+    limiter.enabled = False
 
     def _override_get_db():
         yield db_session

@@ -75,6 +75,20 @@ def run_check() -> bool:
         logger.error(f"Rentals.ca check failed: {e}")
         checks["Rentals.ca"] = False
 
+    try:
+        from flat_research.scrapers.rentals import RENTALS_GQL_KEY, _authenticate
+
+        if RENTALS_GQL_KEY:
+            session = create_session()
+            jwt = _authenticate(session)
+            checks["Rentals.ca GraphQL auth"] = bool(jwt)
+        else:
+            logger.warning("RENTALS_GQL_KEY not set, skipping GraphQL auth check")
+            checks["Rentals.ca GraphQL auth"] = False
+    except Exception as e:
+        logger.error(f"Rentals.ca GraphQL auth check failed: {e}")
+        checks["Rentals.ca GraphQL auth"] = False
+
     all_ok = True
     for name, ok in checks.items():
         status = "OK" if ok else "FAIL"

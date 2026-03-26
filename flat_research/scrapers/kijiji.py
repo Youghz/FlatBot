@@ -8,6 +8,7 @@ import json
 import logging
 import re
 
+import requests
 from bs4 import BeautifulSoup
 
 from flat_research.http_client import create_session, get
@@ -58,7 +59,7 @@ def _extract_listing_id(url: str) -> str:
     return match.group(1) if match else ""
 
 
-def _fetch_detail_description(session, url: str) -> str:
+def _fetch_detail_description(session: requests.Session, url: str) -> str:
     """Fetch a Kijiji detail page and return the full description text."""
     try:
         resp = get(session, url)
@@ -82,7 +83,7 @@ def _fetch_detail_description(session, url: str) -> str:
         return ""
 
 
-def scrape(config: dict, session=None) -> list[Listing]:
+def scrape(config: dict, session: requests.Session | None = None) -> list[Listing]:
     """Scrape Kijiji for matching rental listings."""
     listings = []
     criteria = config["criteria"]
