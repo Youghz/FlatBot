@@ -12,7 +12,14 @@ on:
       - "*.md"
       - "LICENSE"
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
+  PYTHON_VERSION: "3.12"
+  NODE_VERSION: "22"
+  UV_VERSION: "0.7"
   PROJECT_ID: sandbox-hugo
   REGION: northamerica-northeast1
   REGISTRY: northamerica-northeast1-docker.pkg.dev/sandbox-hugo/flat-research
@@ -28,9 +35,9 @@ jobs:
 
       - uses: astral-sh/setup-uv@v5
         with:
-          version: "0.7"
+          version: ${{ env.UV_VERSION }}
 
-      - run: uv sync --frozen --python 3.12
+      - run: uv sync --frozen --python ${{ env.PYTHON_VERSION }}
 
       - name: Lint
         run: uv run ruff check .
@@ -43,11 +50,21 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Frontend install
+        working-directory: frontend
+        run: npm ci
+
+      - name: Frontend lint
+        working-directory: frontend
+        run: npm run lint
 
       - name: Frontend build
         working-directory: frontend
-        run: npm ci && npm run build
+        run: npm run build
 
   deploy:
     runs-on: ubuntu-latest
@@ -65,19 +82,18 @@ jobs:
       - name: Configure Docker for Artifact Registry
         run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
 
-      - name: Build and push web image
+      - name: Build and push images
         run: |
-          IMAGE="${{ env.REGISTRY }}/flatbot-web"
-          docker build --target web -t "$IMAGE:${{ github.sha }}" -t "$IMAGE:latest" .
-          docker push "$IMAGE:${{ github.sha }}"
-          docker push "$IMAGE:latest"
-
-      - name: Build and push scraper image
-        run: |
-          IMAGE="${{ env.REGISTRY }}/flatbot-scraper"
-          docker build --target scraper -t "$IMAGE:${{ github.sha }}" -t "$IMAGE:latest" .
-          docker push "$IMAGE:${{ github.sha }}"
-          docker push "$IMAGE:latest"
+          docker build --target web \
+            -t "${{ env.REGISTRY }}/flatbot-web:${{ github.sha }}" \
+            -t "${{ env.REGISTRY }}/flatbot-web:latest" .
+          docker build --target scraper \
+            -t "${{ env.REGISTRY }}/flatbot-scraper:${{ github.sha }}" \
+            -t "${{ env.REGISTRY }}/flatbot-scraper:latest" .
+          docker push "${{ env.REGISTRY }}/flatbot-web:${{ github.sha }}"
+          docker push "${{ env.REGISTRY }}/flatbot-web:latest"
+          docker push "${{ env.REGISTRY }}/flatbot-scraper:${{ github.sha }}"
+          docker push "${{ env.REGISTRY }}/flatbot-scraper:latest"
 
       - name: Deploy web service
         run: |
@@ -111,12 +127,12 @@ jobs:
             --args="--check" \
             --wait
 
-      - name: Cleanup old images (keep latest only)
+      - name: Cleanup old images (keep 3 latest)
         run: |
           for repo in flatbot-web flatbot-scraper; do
             FULL="${{ env.REGISTRY }}/$repo"
             gcloud artifacts docker images list "$FULL" \
               --sort-by=~UPDATE_TIME --format="value(VERSION)" \
-              | tail -n +2 \
+              | tail -n +4 \
               | xargs -rI {} gcloud artifacts docker images delete "$FULL@{}" --quiet --delete-tags
           done
