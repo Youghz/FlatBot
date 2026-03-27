@@ -26,6 +26,7 @@ env:
   WEB_SERVICE: flatbot-web
   SCRAPER_JOB: flatbot-scraper
   DB_INSTANCE: flatbot-db
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   lint-and-test:
@@ -82,18 +83,32 @@ jobs:
       - name: Configure Docker for Artifact Registry
         run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
 
-      - name: Build and push images
-        run: |
-          docker build --target web \
-            -t "${{ env.REGISTRY }}/flatbot-web:${{ github.sha }}" \
-            -t "${{ env.REGISTRY }}/flatbot-web:latest" .
-          docker build --target scraper \
-            -t "${{ env.REGISTRY }}/flatbot-scraper:${{ github.sha }}" \
-            -t "${{ env.REGISTRY }}/flatbot-scraper:latest" .
-          docker push "${{ env.REGISTRY }}/flatbot-web:${{ github.sha }}"
-          docker push "${{ env.REGISTRY }}/flatbot-web:latest"
-          docker push "${{ env.REGISTRY }}/flatbot-scraper:${{ github.sha }}"
-          docker push "${{ env.REGISTRY }}/flatbot-scraper:latest"
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push web image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: web
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/flatbot-web:${{ github.sha }}
+            ${{ env.REGISTRY }}/flatbot-web:latest
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,mode=max,scope=web
+
+      - name: Build and push scraper image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: scraper
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/flatbot-scraper:${{ github.sha }}
+            ${{ env.REGISTRY }}/flatbot-scraper:latest
+          cache-from: type=gha,scope=scraper
+          cache-to: type=gha,mode=max,scope=scraper
 
       - name: Deploy web service
         run: |
