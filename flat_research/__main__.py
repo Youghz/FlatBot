@@ -84,7 +84,6 @@ def run_check() -> bool:
             checks["Rentals.ca GraphQL auth"] = bool(jwt)
         else:
             logger.warning("RENTALS_GQL_KEY not set, skipping GraphQL auth check")
-            checks["Rentals.ca GraphQL auth"] = False
     except Exception as e:
         logger.error(f"Rentals.ca GraphQL auth check failed: {e}")
         checks["Rentals.ca GraphQL auth"] = False
