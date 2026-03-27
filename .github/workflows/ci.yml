@@ -143,11 +143,12 @@ jobs:
             --wait
 
       - name: Cleanup old images (keep 3 latest)
+        continue-on-error: true
         run: |
           for repo in flatbot-web flatbot-scraper; do
             FULL="${{ env.REGISTRY }}/$repo"
             gcloud artifacts docker images list "$FULL" \
               --sort-by=~UPDATE_TIME --format="value(VERSION)" \
               | tail -n +4 \
-              | xargs -rI {} gcloud artifacts docker images delete "$FULL@{}" --quiet --delete-tags
+              | xargs -rI {} gcloud artifacts docker images delete "$FULL@{}" --quiet --delete-tags 2>/dev/null || true
           done
