@@ -88,12 +88,17 @@ def run_check() -> bool:
         logger.error(f"Rentals.ca GraphQL auth check failed: {e}")
         checks["Rentals.ca GraphQL auth"] = False
 
+    # Rentals.ca blocks datacenter IPs (403) — warn but don't fail the check
+    optional = {"Rentals.ca", "Rentals.ca GraphQL auth"}
+
     all_ok = True
     for name, ok in checks.items():
         status = "OK" if ok else "FAIL"
         logger.info(f"  {name}: {status}")
-        if not ok:
+        if not ok and name not in optional:
             all_ok = False
+        elif not ok:
+            logger.warning(f"  {name}: failed (non-blocking)")
 
     return all_ok
 
