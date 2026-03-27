@@ -12,8 +12,8 @@ class Listing:
     address: str = ""
     neighbourhood: str = ""
     bedrooms: int = 0
-    furnished: bool = False
-    parking: bool = False
+    furnished: bool | None = None
+    parking: bool | None = None
     description: str = ""
     listing_id: str = ""
     move_in_date: str = ""  # YYYY-MM-DD or "immediate" or ""

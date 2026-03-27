@@ -10,8 +10,8 @@ interface ListingDetail {
   address: string;
   neighbourhood: string;
   bedrooms: number;
-  furnished: boolean;
-  parking: boolean;
+  furnished: boolean | null;
+  parking: boolean | null;
   description: string;
   move_in_date: string;
   notified_at: string;
@@ -62,8 +62,8 @@ export default function Dashboard() {
               </div>
               <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem', color: '#666', fontSize: '0.9rem', flexWrap: 'wrap' }}>
                 <span>{l.bedrooms} chambre{l.bedrooms !== 1 ? 's' : ''}</span>
-                <span>{l.furnished ? 'Meublé' : 'Non meublé'}</span>
-                <span>{l.parking ? 'Parking' : 'Pas de parking'}</span>
+                <span>{l.furnished === true ? 'Meublé' : l.furnished === false ? 'Non meublé' : 'Meublé: ?'}</span>
+                <span>{l.parking === true ? 'Parking' : l.parking === false ? 'Pas de parking' : 'Parking: ?'}</span>
                 {l.neighbourhood && <span>{l.neighbourhood}</span>}
                 {l.move_in_date && <span>Emménagement: {l.move_in_date}</span>}
                 <span style={{ marginLeft: 'auto' }}>{l.source}</span>

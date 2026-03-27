@@ -131,12 +131,17 @@ def _node_to_listing(node: dict) -> Listing | None:
 
     # Furnished — from API field ("yes", "fully", "no", "optional")
     furnished_val = (node.get("furnished") or "").lower()
-    is_furnished = furnished_val in ("yes", "fully")
+    if furnished_val in ("yes", "fully"):
+        is_furnished: bool | None = True
+    elif furnished_val == "no":
+        is_furnished = False
+    else:
+        is_furnished = None  # "optional", empty, or missing → unknown
 
     # Parking — from structured parking data
     parking_obj = node.get("parking") or {}
     parking_types = parking_obj.get("parkingTypes") or []
-    has_parking = len(parking_types) > 0
+    has_parking: bool | None = True if len(parking_types) > 0 else None
 
     # Amenities — flat list of [category, name] pairs
     amenities = node.get("amenities") or []
@@ -147,12 +152,12 @@ def _node_to_listing(node: dict) -> Listing | None:
     description = desc_obj.get("plain", "") if isinstance(desc_obj, dict) else ""
 
     # Fallback: detect furnished/parking from description + amenities text
-    if not is_furnished or not has_parking:
+    if is_furnished is None or has_parking is None:
         combined_text = f"{amenities_text} {description}"
         text_furnished, text_parking = check_furnished_parking(combined_text)
-        if not is_furnished:
+        if is_furnished is None:
             is_furnished = text_furnished
-        if not has_parking:
+        if has_parking is None:
             has_parking = text_parking
 
     # Title

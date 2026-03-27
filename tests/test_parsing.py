@@ -44,17 +44,32 @@ class TestFurnishedParking:
     @pytest.mark.parametrize(
         "text,furnished,parking",
         [
+            # Positive detection
             ("Appartement meublé avec stationnement", True, True),
             ("Furnished apartment with parking", True, True),
-            ("Non meublé, pas de parking", False, False),
             ("Meubles inclus, garage", True, True),
-            ("Logement vide", False, False),
+            ("Semi-meublé avec garage intérieur", True, True),
+            # Negative detection
+            ("Non meublé, pas de parking", False, False),
+            ("Unfurnished, no parking", False, False),
+            # Tri-state: None when no mention
+            ("Bel appartement lumineux", None, None),
+            ("Logement vide", None, None),
+            # "tout inclus" should NOT match furnished (Quebec = utilities included)
+            ("Logement tout inclus chauffage eau chaude", None, None),
+            ("All included utilities", None, None),
+            # "garage a velo" / "vente de garage" → detected as no parking (negation)
+            ("Rangement et garage à vélo disponibles", None, False),
+            ("Vente de garage ce samedi", None, False),
+            # Mixed: one known, one unknown
+            ("Appartement meublé", True, None),
+            ("Pas de stationnement", None, False),
         ],
     )
     def test_furnished_parking(self, text, furnished, parking):
         f, p = check_furnished_parking(text)
-        assert f == furnished
-        assert p == parking
+        assert f is furnished, f"furnished: expected {furnished}, got {f} for: {text}"
+        assert p is parking, f"parking: expected {parking}, got {p} for: {text}"
 
 
 class TestMatchesCriteria:
@@ -81,8 +96,8 @@ class TestMatchesCriteria:
             "title": "",
             "neighbourhood": "",
             "description": "",
-            "furnished": False,
-            "parking": False,
+            "furnished": None,
+            "parking": None,
         }
         defaults.update(kwargs)
         return Listing(**defaults)
@@ -146,7 +161,7 @@ class TestMatchesCriteria:
         listing = self._make_listing(address="Mile End, Montreal")
         assert matches_criteria(listing, config) is True
 
-    def test_furnished_required_but_missing(self):
+    def test_furnished_required_but_explicitly_false(self):
         config = {"criteria": {**self.CONFIG["criteria"], "furnished": True}}
         listing = self._make_listing(furnished=False)
         assert matches_criteria(listing, config) is False
@@ -156,7 +171,13 @@ class TestMatchesCriteria:
         listing = self._make_listing(furnished=True)
         assert matches_criteria(listing, config) is True
 
-    def test_parking_required_but_missing(self):
+    def test_furnished_required_but_unknown_passes(self):
+        """Unknown (None) should pass when furnished is required — don't miss listings."""
+        config = {"criteria": {**self.CONFIG["criteria"], "furnished": True}}
+        listing = self._make_listing(furnished=None)
+        assert matches_criteria(listing, config) is True
+
+    def test_parking_required_but_explicitly_false(self):
         config = {"criteria": {**self.CONFIG["criteria"], "parking": True}}
         listing = self._make_listing(parking=False)
         assert matches_criteria(listing, config) is False
@@ -164,6 +185,12 @@ class TestMatchesCriteria:
     def test_parking_required_and_present(self):
         config = {"criteria": {**self.CONFIG["criteria"], "parking": True}}
         listing = self._make_listing(parking=True)
+        assert matches_criteria(listing, config) is True
+
+    def test_parking_required_but_unknown_passes(self):
+        """Unknown (None) should pass when parking is required — don't miss listings."""
+        config = {"criteria": {**self.CONFIG["criteria"], "parking": True}}
+        listing = self._make_listing(parking=None)
         assert matches_criteria(listing, config) is True
 
     def test_move_in_after_keeps_future(self):

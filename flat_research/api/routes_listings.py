@@ -22,8 +22,8 @@ class ListingDetail(BaseModel):
     address: str
     neighbourhood: str
     bedrooms: int
-    furnished: bool
-    parking: bool
+    furnished: bool | None
+    parking: bool | None
     description: str
     move_in_date: str
     notified_at: datetime

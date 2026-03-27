@@ -56,8 +56,6 @@ _FURNISHED_POS = [
     "semi-meuble",
     "semi meublé",
     "fully furnished",
-    "tout inclus",
-    "all included",
     "tout équipé",
     "tout equipe",
     "clé en main",
@@ -70,22 +68,33 @@ _PARKING_NEG = [
     "no parking",
     "sans parking",
     "sans stationnement",
+    "garage à vélo",
+    "garage a velo",
+    "vente de garage",
 ]
 _PARKING_POS = ["parking", "stationnement", "garage"]
 
 
-def check_furnished_parking(text: str) -> tuple[bool, bool]:
+def check_furnished_parking(text: str) -> tuple[bool | None, bool | None]:
+    """Detect furnished/parking status from text.
+
+    Returns tri-state: True (confirmed), False (explicitly denied), None (unknown).
+    """
     text_lower = text.lower()
 
     if any(p in text_lower for p in _FURNISHED_NEG):
         furnished = False
+    elif any(w in text_lower for w in _FURNISHED_POS):
+        furnished = True
     else:
-        furnished = any(w in text_lower for w in _FURNISHED_POS)
+        furnished = None
 
     if any(p in text_lower for p in _PARKING_NEG):
         parking = False
+    elif any(w in text_lower for w in _PARKING_POS):
+        parking = True
     else:
-        parking = any(w in text_lower for w in _PARKING_POS)
+        parking = None
 
     return furnished, parking
 
@@ -290,12 +299,12 @@ def matches_criteria(listing, config: dict) -> bool:
     if bedrooms_max is not None and listing.bedrooms > bedrooms_max:
         return False
 
-    # Furnished
-    if criteria.get("furnished") and not listing.furnished:
+    # Furnished — reject only if explicitly False (not furnished), accept True and None (unknown)
+    if criteria.get("furnished") and listing.furnished is False:
         return False
 
-    # Parking
-    if criteria.get("parking") and not listing.parking:
+    # Parking — same tri-state logic
+    if criteria.get("parking") and listing.parking is False:
         return False
 
     # Move-in date — exclude listings with move-in date before this threshold

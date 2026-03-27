@@ -69,7 +69,18 @@ def _build_urls(config: dict) -> list[str]:
     return urls
 
 
-def _parse_card(card) -> Listing | None:
+def _fetch_detail_text(session: requests.Session, url: str) -> str:
+    """Fetch a Centris detail page and return the full visible text."""
+    try:
+        resp = get(session, url)
+        soup = BeautifulSoup(resp.text, "html.parser")
+        return soup.get_text(" ", strip=True)[:3000]
+    except Exception as e:
+        logger.debug(f"Could not fetch Centris detail {url}: {e}")
+        return ""
+
+
+def _parse_card(card, session: requests.Session | None = None) -> Listing | None:
     """Parse a single Centris property-thumbnail-item card into a Listing."""
     # MLS number / listing ID
     sku_el = card.select_one("meta[itemprop='sku']")
@@ -115,8 +126,10 @@ def _parse_card(card) -> Listing | None:
     else:
         bedrooms = extract_bedrooms_from_text(specs_text)
 
-    # Furnished / parking (use shared detection with negation handling)
-    furnished, parking = check_furnished_parking(specs_text)
+    # Furnished / parking — try detail page for better detection
+    detail_text = _fetch_detail_text(session, url) if session else ""
+    detection_text = detail_text if detail_text else specs_text
+    furnished, parking = check_furnished_parking(detection_text)
 
     # Neighbourhood detection
     neighbourhood = ""
@@ -170,7 +183,7 @@ def scrape(config: dict, session: requests.Session | None = None) -> list[Listin
 
         for card in cards:
             try:
-                listing = _parse_card(card)
+                listing = _parse_card(card, session)
                 if listing and listing.listing_id not in seen_ids:
                     seen_ids.add(listing.listing_id)
                     listings.append(listing)
