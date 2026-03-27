@@ -162,7 +162,7 @@ class TestRentalsFixture:
         with_parking = _node_to_listing(nodes[0])
         without_parking = _node_to_listing(nodes[2])
         assert with_parking.parking is True
-        assert without_parking.parking is False
+        assert without_parking.parking is None  # no parking data → unknown
 
     def test_furnished_from_api_field(self, nodes):
         furnished = _node_to_listing(nodes[0])

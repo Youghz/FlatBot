@@ -24,8 +24,18 @@ def send_notification(new_listings: list, chat_id: str, bot_token: str, dashboar
     summary = f"<b>{len(new_listings)} nouveau(x) logement(s) trouve(s)!</b>\n\n"
 
     for listing in new_listings:
-        furnished = "Meuble" if listing.furnished else "Non meuble"
-        parking = "Parking" if listing.parking else "Pas de parking"
+        if listing.furnished is True:
+            furnished = "Meublé"
+        elif listing.furnished is False:
+            furnished = "Non meublé"
+        else:
+            furnished = "Meublé: ?"
+        if listing.parking is True:
+            parking = "Parking"
+        elif listing.parking is False:
+            parking = "Pas de parking"
+        else:
+            parking = "Parking: ?"
         title_short = escape(listing.title[:80])
         address = escape(listing.address)
 
