@@ -139,10 +139,7 @@ def run_multi_user() -> bool:
             else:
                 has_chat = bool(user.telegram_chat_id)
                 has_token = bool(bot_token)
-                logger.warning(
-                    f"User {user.email}: skipping notification"
-                    f" (chat_id={has_chat}, bot_token={has_token})"
-                )
+                logger.warning(f"User {user.email}: skipping notification (chat_id={has_chat}, bot_token={has_token})")
 
         logger.info(f"Cycle complete: {notified_count} users notified")
         return True
