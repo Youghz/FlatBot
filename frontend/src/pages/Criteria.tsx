@@ -24,6 +24,7 @@ export default function Criteria() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [dirty, setDirty] = useState(false);
 
   useEffect(() => {
     apiFetch('/criteria')
@@ -45,6 +46,11 @@ export default function Criteria() {
       .finally(() => setLoading(false));
   }, []);
 
+  function markDirty() {
+    setDirty(true);
+    setSaved(false);
+  }
+
   function toggleHood(name: string) {
     setSelectedHoods(prev => {
       const next = new Set(prev);
@@ -52,7 +58,17 @@ export default function Criteria() {
       else next.add(name);
       return next;
     });
-    setSaved(false);
+    markDirty();
+  }
+
+  function selectAllHoods() {
+    setSelectedHoods(new Set(Object.keys(AVAILABLE_NEIGHBOURHOODS)));
+    markDirty();
+  }
+
+  function clearAllHoods() {
+    setSelectedHoods(new Set());
+    markDirty();
   }
 
   async function handleSubmit(e: FormEvent) {
@@ -80,65 +96,97 @@ export default function Criteria() {
     });
     setSaving(false);
     setSaved(true);
+    setDirty(false);
   }
 
   if (loading) return <div className="loading">Chargement...</div>;
 
+  const allNames = Object.keys(AVAILABLE_NEIGHBOURHOODS);
+  const allSelected = selectedHoods.size === allNames.length;
+  const noneSelected = selectedHoods.size === 0;
+
   return (
     <div className="page-medium">
       <h1>Critères de recherche</h1>
+
+      {noneSelected && !dirty && (
+        <div className="criteria-banner warning">
+          Aucun quartier sélectionné — le scraper ne cherchera aucune annonce.
+        </div>
+      )}
+
       <form onSubmit={handleSubmit}>
         <fieldset>
-          <legend>Quartiers</legend>
+          <legend>
+            Quartiers
+            <span className="legend-count">{selectedHoods.size}/{allNames.length}</span>
+          </legend>
+
+          <div className="hood-actions">
+            <button type="button" onClick={selectAllHoods} className="btn-link" disabled={allSelected}>Tout sélectionner</button>
+            <button type="button" onClick={clearAllHoods} className="btn-link" disabled={noneSelected}>Tout désélectionner</button>
+          </div>
+
           <div className="hood-grid">
-            {Object.keys(AVAILABLE_NEIGHBOURHOODS).map(name => (
-              <label key={name} className="hood-chip">
-                <input type="checkbox" checked={selectedHoods.has(name)} onChange={() => toggleHood(name)} />
+            {allNames.map(name => (
+              <button
+                key={name}
+                type="button"
+                className={`hood-chip${selectedHoods.has(name) ? ' selected' : ''}`}
+                onClick={() => toggleHood(name)}
+              >
+                {selectedHoods.has(name) && <span className="hood-check">&#10003;</span>}
                 {name}
-              </label>
+              </button>
             ))}
           </div>
         </fieldset>
 
-        <div className="form-row">
-          <div className="form-group">
-            <label>Prix min ($)</label>
-            <input type="number" value={priceMin} onChange={e => setPriceMin(+e.target.value)} />
+        <fieldset>
+          <legend>Budget et taille</legend>
+          <div className="form-row">
+            <div className="form-group">
+              <label>Prix min ($)</label>
+              <input type="number" value={priceMin} onChange={e => { setPriceMin(+e.target.value); markDirty(); }} />
+            </div>
+            <div className="form-group">
+              <label>Prix max ($)</label>
+              <input type="number" value={priceMax} onChange={e => { setPriceMax(+e.target.value); markDirty(); }} />
+            </div>
+            <div className="form-group">
+              <label>Chambres min</label>
+              <input type="number" value={bedroomsMin} onChange={e => { setBedroomsMin(+e.target.value); markDirty(); }} min={0} />
+            </div>
+            <div className="form-group">
+              <label>Chambres max</label>
+              <input type="number" value={bedroomsMax} onChange={e => { setBedroomsMax(e.target.value ? +e.target.value : ''); markDirty(); }} min={0} placeholder="Illimité" />
+            </div>
           </div>
-          <div className="form-group">
-            <label>Prix max ($)</label>
-            <input type="number" value={priceMax} onChange={e => setPriceMax(+e.target.value)} />
-          </div>
-          <div className="form-group">
-            <label>Chambres min</label>
-            <input type="number" value={bedroomsMin} onChange={e => setBedroomsMin(+e.target.value)} min={0} />
-          </div>
-          <div className="form-group">
-            <label>Chambres max</label>
-            <input type="number" value={bedroomsMax} onChange={e => setBedroomsMax(e.target.value ? +e.target.value : '')} min={0} placeholder="Illimité" />
-          </div>
-        </div>
+        </fieldset>
 
-        <div className="option-row">
-          <label className="option-label">
-            <input type="checkbox" checked={furnished} onChange={e => setFurnished(e.target.checked)} />
-            Meublé uniquement
-          </label>
-          <label className="option-label">
-            <input type="checkbox" checked={parking} onChange={e => setParking(e.target.checked)} />
-            Parking requis
-          </label>
-        </div>
+        <fieldset>
+          <legend>Options</legend>
+          <div className="option-row">
+            <label className="option-label">
+              <input type="checkbox" checked={furnished} onChange={e => { setFurnished(e.target.checked); markDirty(); }} />
+              Meublé uniquement
+            </label>
+            <label className="option-label">
+              <input type="checkbox" checked={parking} onChange={e => { setParking(e.target.checked); markDirty(); }} />
+              Parking requis
+            </label>
+          </div>
 
-        <div className="form-group">
-          <label>Emménagement après le</label>
-          <input type="date" value={moveInAfter} onChange={e => setMoveInAfter(e.target.value)} />
-        </div>
+          <div className="form-group">
+            <label>Emménagement après le</label>
+            <input type="date" value={moveInAfter} onChange={e => { setMoveInAfter(e.target.value); markDirty(); }} />
+          </div>
+        </fieldset>
 
-        <button type="submit" disabled={saving} className="btn-full" style={{ marginTop: '0.5rem' }}>
-          {saving ? 'Enregistrement...' : 'Sauvegarder'}
+        <button type="submit" disabled={saving || (!dirty && !saved)} className={`btn-full${dirty ? ' btn-pulse' : ''}`}>
+          {saving ? 'Enregistrement...' : dirty ? 'Sauvegarder les modifications' : 'Sauvegarder'}
         </button>
-        {saved && <p className="success-msg" style={{ marginTop: '0.5rem' }}>Critères sauvegardés</p>}
+        {saved && !dirty && <p className="success-msg" style={{ marginTop: '0.5rem', textAlign: 'center' }}>Critères sauvegardés — les changements seront appliqués au prochain scan</p>}
       </form>
     </div>
   );
