@@ -48,7 +48,7 @@ class TestFurnishedParking:
             ("Appartement meublé avec stationnement", True, True),
             ("Furnished apartment with parking", True, True),
             ("Meubles inclus, garage", True, True),
-            ("Semi-meublé avec garage intérieur", True, True),
+            ("Semi-meublé avec garage intérieur", "semi", True),
             # Negative detection
             ("Non meublé, pas de parking", False, False),
             ("Unfurnished, no parking", False, False),
