@@ -42,36 +42,57 @@ export default function Profile() {
     setLinkCode('');
   }
 
-  if (loading) return <p>Chargement...</p>;
+  async function handlePasswordChange(e: FormEvent) {
+    e.preventDefault();
+    setPwdChanging(true);
+    setPwdMessage('');
+    setPwdError('');
+    const res = await apiFetch('/me/password', {
+      method: 'POST',
+      body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+    });
+    if (res.ok) {
+      setPwdMessage('Mot de passe modifié');
+      setCurrentPassword('');
+      setNewPassword('');
+    } else {
+      const data = await res.json();
+      setPwdError(data.detail || 'Erreur');
+    }
+    setPwdChanging(false);
+  }
+
+  if (loading) return <div className="loading">Chargement...</div>;
 
   return (
-    <div style={{ maxWidth: 500, margin: '2rem auto', padding: '0 1rem' }}>
+    <div className="page-narrow">
       <h1>Mon profil</h1>
-      <p><strong>Email :</strong> {email}</p>
+      <p style={{ color: 'var(--text-secondary)' }}>{email}</p>
 
-      <div style={{ marginTop: '2rem', padding: '1rem', border: '1px solid #ddd', borderRadius: 8 }}>
-        <h2 style={{ marginTop: 0 }}>Telegram</h2>
-
+      <div className="card section">
+        <h2>Telegram</h2>
         {telegramChatId ? (
           <>
-            <p style={{ color: 'green' }}>Telegram lié (ID: {telegramChatId})</p>
-            <button onClick={handleUnlink} style={{ background: '#dc3545', color: 'white', border: 'none', padding: '0.5rem 1rem', borderRadius: 4, cursor: 'pointer' }}>
-              Délier Telegram
-            </button>
+            <p className="success-msg">Telegram lié (ID: {telegramChatId})</p>
+            <button onClick={handleUnlink} className="btn-danger">Délier Telegram</button>
           </>
         ) : linkCode ? (
           <div>
-            <p>1. Ouvrez <a href={`https://t.me/${botUsername}`} target="_blank" rel="noopener noreferrer">@{botUsername}</a> sur Telegram</p>
-            <p>2. Envoyez ce message au bot :</p>
-            <code style={{ display: 'block', padding: '0.75rem', background: '#f5f5f5', borderRadius: 4, fontSize: '1.2rem', textAlign: 'center', userSelect: 'all' }}>
-              /link {linkCode}
-            </code>
-            <p style={{ color: '#666', marginTop: '0.5rem' }}>Le code expire au prochain clic sur "Lier Telegram".</p>
-            <button onClick={() => { setLinkCode(''); }} style={{ marginTop: '0.5rem' }}>Annuler</button>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: '0.75rem' }}>
+              1. Ouvrez <a href={`https://t.me/${botUsername}`} target="_blank" rel="noopener noreferrer">@{botUsername}</a> sur Telegram
+            </p>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: '0.75rem' }}>2. Envoyez ce message au bot :</p>
+            <code className="code-display">/link {linkCode}</code>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '0.75rem' }}>
+              Le code expire au prochain clic sur "Lier Telegram".
+            </p>
+            <button onClick={() => setLinkCode('')} className="btn-secondary" style={{ marginTop: '0.75rem' }}>Annuler</button>
           </div>
         ) : (
           <>
-            <p style={{ color: '#666' }}>Liez votre compte Telegram pour recevoir les notifications.</p>
+            <p style={{ color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
+              Liez votre compte Telegram pour recevoir les notifications.
+            </p>
             <button onClick={handleLinkTelegram} disabled={linking}>
               {linking ? 'Génération...' : 'Lier Telegram'}
             </button>
@@ -79,37 +100,19 @@ export default function Profile() {
         )}
       </div>
 
-      <div style={{ marginTop: '2rem', padding: '1rem', border: '1px solid #ddd', borderRadius: 8 }}>
-        <h2 style={{ marginTop: 0 }}>Mot de passe</h2>
-        <form onSubmit={async (e: FormEvent) => {
-          e.preventDefault();
-          setPwdChanging(true);
-          setPwdMessage('');
-          setPwdError('');
-          const res = await apiFetch('/me/password', {
-            method: 'POST',
-            body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
-          });
-          if (res.ok) {
-            setPwdMessage('Mot de passe modifié');
-            setCurrentPassword('');
-            setNewPassword('');
-          } else {
-            const data = await res.json();
-            setPwdError(data.detail || 'Erreur');
-          }
-          setPwdChanging(false);
-        }}>
-          <div style={{ marginBottom: '0.75rem' }}>
+      <div className="card section">
+        <h2>Mot de passe</h2>
+        <form onSubmit={handlePasswordChange}>
+          <div className="form-group">
             <label>Mot de passe actuel</label>
-            <input type="password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} required style={{ width: '100%' }} />
+            <input type="password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} required />
           </div>
-          <div style={{ marginBottom: '0.75rem' }}>
+          <div className="form-group">
             <label>Nouveau mot de passe (8 car. min.)</label>
-            <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} required minLength={8} style={{ width: '100%' }} />
+            <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} required minLength={8} />
           </div>
-          {pwdError && <p style={{ color: 'red' }}>{pwdError}</p>}
-          {pwdMessage && <p style={{ color: 'green' }}>{pwdMessage}</p>}
+          {pwdError && <p className="error-msg">{pwdError}</p>}
+          {pwdMessage && <p className="success-msg">{pwdMessage}</p>}
           <button type="submit" disabled={pwdChanging}>
             {pwdChanging ? 'Modification...' : 'Changer le mot de passe'}
           </button>

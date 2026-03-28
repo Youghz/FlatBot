@@ -82,17 +82,17 @@ export default function Criteria() {
     setSaved(true);
   }
 
-  if (loading) return <p>Chargement...</p>;
+  if (loading) return <div className="loading">Chargement...</div>;
 
   return (
-    <div style={{ maxWidth: 600, margin: '2rem auto', padding: '0 1rem' }}>
+    <div className="page-medium">
       <h1>Critères de recherche</h1>
       <form onSubmit={handleSubmit}>
-        <fieldset style={{ marginBottom: '1.5rem' }}>
+        <fieldset>
           <legend>Quartiers</legend>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+          <div className="hood-grid">
             {Object.keys(AVAILABLE_NEIGHBOURHOODS).map(name => (
-              <label key={name} style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+              <label key={name} className="hood-chip">
                 <input type="checkbox" checked={selectedHoods.has(name)} onChange={() => toggleHood(name)} />
                 {name}
               </label>
@@ -100,45 +100,45 @@ export default function Criteria() {
           </div>
         </fieldset>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
-          <div>
+        <div className="form-row">
+          <div className="form-group">
             <label>Prix min ($)</label>
-            <input type="number" value={priceMin} onChange={e => setPriceMin(+e.target.value)} style={{ width: '100%' }} />
+            <input type="number" value={priceMin} onChange={e => setPriceMin(+e.target.value)} />
           </div>
-          <div>
+          <div className="form-group">
             <label>Prix max ($)</label>
-            <input type="number" value={priceMax} onChange={e => setPriceMax(+e.target.value)} style={{ width: '100%' }} />
+            <input type="number" value={priceMax} onChange={e => setPriceMax(+e.target.value)} />
           </div>
-          <div>
+          <div className="form-group">
             <label>Chambres min</label>
-            <input type="number" value={bedroomsMin} onChange={e => setBedroomsMin(+e.target.value)} min={0} style={{ width: '100%' }} />
+            <input type="number" value={bedroomsMin} onChange={e => setBedroomsMin(+e.target.value)} min={0} />
           </div>
-          <div>
+          <div className="form-group">
             <label>Chambres max</label>
-            <input type="number" value={bedroomsMax} onChange={e => setBedroomsMax(e.target.value ? +e.target.value : '')} min={0} style={{ width: '100%' }} placeholder="Illimité" />
+            <input type="number" value={bedroomsMax} onChange={e => setBedroomsMax(e.target.value ? +e.target.value : '')} min={0} placeholder="Illimité" />
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '2rem', marginBottom: '1.5rem' }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <div className="option-row">
+          <label className="option-label">
             <input type="checkbox" checked={furnished} onChange={e => setFurnished(e.target.checked)} />
             Meublé uniquement
           </label>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <label className="option-label">
             <input type="checkbox" checked={parking} onChange={e => setParking(e.target.checked)} />
             Parking requis
           </label>
         </div>
 
-        <div style={{ marginBottom: '1.5rem' }}>
+        <div className="form-group">
           <label>Emménagement après le</label>
-          <input type="date" value={moveInAfter} onChange={e => setMoveInAfter(e.target.value)} style={{ width: '100%' }} />
+          <input type="date" value={moveInAfter} onChange={e => setMoveInAfter(e.target.value)} />
         </div>
 
-        <button type="submit" disabled={saving} style={{ width: '100%' }}>
+        <button type="submit" disabled={saving} className="btn-full" style={{ marginTop: '0.5rem' }}>
           {saving ? 'Enregistrement...' : 'Sauvegarder'}
         </button>
-        {saved && <p style={{ color: 'green', marginTop: '0.5rem' }}>Critères sauvegardés</p>}
+        {saved && <p className="success-msg" style={{ marginTop: '0.5rem' }}>Critères sauvegardés</p>}
       </form>
     </div>
   );

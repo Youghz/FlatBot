@@ -20,23 +20,25 @@ export default function Signup() {
   }
 
   return (
-    <div style={{ maxWidth: 400, margin: '4rem auto', padding: '0 1rem' }}>
-      <h1>Inscription</h1>
-      <form onSubmit={handleSubmit}>
-        <div style={{ marginBottom: '1rem' }}>
-          <label>Email</label>
-          <input type="email" value={email} onChange={e => setEmail(e.target.value)} required style={{ width: '100%' }} />
-        </div>
-        <div style={{ marginBottom: '1rem' }}>
-          <label>Mot de passe (8 caractères min.)</label>
-          <input type="password" value={password} onChange={e => setPassword(e.target.value)} required minLength={8} style={{ width: '100%' }} />
-        </div>
-        {error && <p style={{ color: 'red' }}>{error}</p>}
-        <button type="submit" style={{ width: '100%' }}>Créer mon compte</button>
-      </form>
-      <p style={{ marginTop: '1rem' }}>
-        Déjà un compte ? <Link to="/login">Se connecter</Link>
-      </p>
+    <div className="auth-page">
+      <div className="auth-card">
+        <h1>Inscription</h1>
+        <form onSubmit={handleSubmit}>
+          <div className="form-group">
+            <label>Email</label>
+            <input type="email" value={email} onChange={e => setEmail(e.target.value)} required />
+          </div>
+          <div className="form-group">
+            <label>Mot de passe (8 caractères min.)</label>
+            <input type="password" value={password} onChange={e => setPassword(e.target.value)} required minLength={8} />
+          </div>
+          {error && <p className="error-msg">{error}</p>}
+          <button type="submit" className="btn-full">Créer mon compte</button>
+        </form>
+        <p className="auth-footer">
+          Déjà un compte ? <Link to="/login">Se connecter</Link>
+        </p>
+      </div>
     </div>
   );
 }

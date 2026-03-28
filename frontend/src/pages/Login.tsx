@@ -20,23 +20,25 @@ export default function Login() {
   }
 
   return (
-    <div style={{ maxWidth: 400, margin: '4rem auto', padding: '0 1rem' }}>
-      <h1>Connexion</h1>
-      <form onSubmit={handleSubmit}>
-        <div style={{ marginBottom: '1rem' }}>
-          <label>Email</label>
-          <input type="email" value={email} onChange={e => setEmail(e.target.value)} required style={{ width: '100%' }} />
-        </div>
-        <div style={{ marginBottom: '1rem' }}>
-          <label>Mot de passe</label>
-          <input type="password" value={password} onChange={e => setPassword(e.target.value)} required style={{ width: '100%' }} />
-        </div>
-        {error && <p style={{ color: 'red' }}>{error}</p>}
-        <button type="submit" style={{ width: '100%' }}>Se connecter</button>
-      </form>
-      <p style={{ marginTop: '1rem' }}>
-        Pas encore de compte ? <Link to="/signup">S'inscrire</Link>
-      </p>
+    <div className="auth-page">
+      <div className="auth-card">
+        <h1>Connexion</h1>
+        <form onSubmit={handleSubmit}>
+          <div className="form-group">
+            <label>Email</label>
+            <input type="email" value={email} onChange={e => setEmail(e.target.value)} required />
+          </div>
+          <div className="form-group">
+            <label>Mot de passe</label>
+            <input type="password" value={password} onChange={e => setPassword(e.target.value)} required />
+          </div>
+          {error && <p className="error-msg">{error}</p>}
+          <button type="submit" className="btn-full">Se connecter</button>
+        </form>
+        <p className="auth-footer">
+          Pas encore de compte ? <Link to="/signup">S'inscrire</Link>
+        </p>
+      </div>
     </div>
   );
 }
