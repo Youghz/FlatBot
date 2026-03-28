@@ -46,12 +46,16 @@ _FURNISHED_NEG = [
     "sans meuble",
     "unfurnished",
     "not furnished",
+    "nothing included",
+    "rien d'inclus",
+    "rien inclus",
 ]
 _FURNISHED_POS = [
     "meublé",
-    "meuble",
     "furnished",
     "meubles inclus",
+    "meubles fournis",
+    "meubles sont fournis",
     "semi-meublé",
     "semi-meuble",
     "semi meublé",
@@ -61,6 +65,27 @@ _FURNISHED_POS = [
     "clé en main",
     "cle en main",
     "turnkey",
+]
+# "meuble" without accent removed — matches "immeuble" (false positive)
+# Appliance keywords → "semi" (electros only, not real furniture)
+_SEMI_FURNISHED = [
+    "électros inclus",
+    "electros inclus",
+    "électro inclus",
+    "electro inclus",
+    "appliances included",
+    "5 électros",
+    "5 electros",
+    "cuisinière inclus",
+    "cuisiniere inclus",
+    "inclue frigo",
+    "inclus frigo",
+    "frigo inclus",
+    "fridge included",
+    "réfrigérateur",
+    "refrigerateur",
+    "lave-vaisselle",
+    "dishwasher",
 ]
 _PARKING_NEG = [
     "pas de parking",
@@ -75,22 +100,32 @@ _PARKING_NEG = [
 _PARKING_POS = ["parking", "stationnement", "garage"]
 
 
-def check_furnished_parking(text: str) -> tuple[bool | None, bool | None]:
+def check_furnished_parking(text: str) -> tuple[bool | None | str, bool | None]:
     """Detect furnished/parking status from text.
 
-    Returns tri-state: True (confirmed), False (explicitly denied), None (unknown).
+    Returns:
+        furnished: True (fully furnished), "semi" (appliances only), False (explicitly not), None (unknown)
+        parking: True, False, None
     """
     text_lower = text.lower()
 
+    # Furnished detection: negation > positive > semi > None
     if any(p in text_lower for p in _FURNISHED_NEG):
-        furnished = False
+        furnished: bool | None | str = False
     elif any(w in text_lower for w in _FURNISHED_POS):
-        furnished = True
+        # Check if it's actually semi-meublé
+        if "semi-meublé" in text_lower or "semi-meuble" in text_lower or "semi meublé" in text_lower:
+            furnished = "semi"
+        else:
+            furnished = True
+    elif any(w in text_lower for w in _SEMI_FURNISHED):
+        furnished = "semi"
     else:
         furnished = None
 
+    # Parking detection
     if any(p in text_lower for p in _PARKING_NEG):
-        parking = False
+        parking: bool | None = False
     elif any(w in text_lower for w in _PARKING_POS):
         parking = True
     else:
