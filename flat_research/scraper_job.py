@@ -131,9 +131,15 @@ def run_multi_user() -> bool:
 
             if user.telegram_chat_id and bot_token:
                 send_notification(new_for_user, user.telegram_chat_id, bot_token)
+                mark_listings_seen(db, user.id, [listing.listing_id for listing in new_for_user])
                 notified_count += 1
-
-            mark_listings_seen(db, user.id, [listing.listing_id for listing in new_for_user])
+            else:
+                has_chat = bool(user.telegram_chat_id)
+                has_token = bool(bot_token)
+                logger.warning(
+                    f"User {user.email}: skipping notification"
+                    f" (chat_id={has_chat}, bot_token={has_token})"
+                )
 
         logger.info(f"Cycle complete: {notified_count} users notified")
         return True
