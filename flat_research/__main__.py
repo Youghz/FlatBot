@@ -68,8 +68,9 @@ def run_check() -> bool:
         checks["Centris"] = False
 
     try:
-        session = create_session()
-        resp = get(session, "https://rentals.ca/montreal")
+        from curl_cffi import requests as cf_requests
+
+        resp = cf_requests.get("https://rentals.ca/montreal", impersonate="chrome", timeout=30)
         checks["Rentals.ca"] = resp.status_code == 200
     except Exception as e:
         logger.error(f"Rentals.ca check failed: {e}")
@@ -79,7 +80,9 @@ def run_check() -> bool:
         from flat_research.scrapers.rentals import RENTALS_GQL_KEY, _authenticate
 
         if RENTALS_GQL_KEY:
-            session = create_session()
+            from curl_cffi import requests as cf_requests
+
+            session = cf_requests.Session(impersonate="chrome")
             jwt = _authenticate(session)
             checks["Rentals.ca GraphQL auth"] = bool(jwt)
         else:

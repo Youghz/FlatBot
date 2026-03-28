@@ -7,9 +7,8 @@ to obtain a JWT, then queries rentalListings with price/bedroom filters.
 import logging
 import os
 
-import requests
+from curl_cffi import requests as cf_requests
 
-from flat_research.http_client import create_session
 from flat_research.models import Listing
 from flat_research.parsing import check_furnished_parking
 
@@ -63,7 +62,7 @@ query SearchListings(
 """
 
 
-def _authenticate(session: requests.Session) -> str:
+def _authenticate(session: cf_requests.Session) -> str:
     """Acquire a JWT access token from the Rentals.ca GraphQL API."""
     payload = {
         "query": _AUTH_MUTATION,
@@ -180,13 +179,13 @@ def _node_to_listing(node: dict) -> Listing | None:
     )
 
 
-def scrape(config: dict, session: requests.Session | None = None) -> list[Listing]:
+def scrape(config: dict, session: cf_requests.Session | None = None) -> list[Listing]:
     """Scrape Rentals.ca for matching rental listings."""
     listings = []
     criteria = config["criteria"]
 
-    if session is None:
-        session = create_session()
+    # Use curl_cffi with Chrome TLS fingerprint to bypass Cloudflare
+    session = cf_requests.Session(impersonate="chrome")
 
     # Authenticate
     try:
@@ -223,7 +222,7 @@ def scrape(config: dict, session: requests.Session | None = None) -> list[Listin
             resp = session.post(RENTALS_GQL_URL, json=payload, headers=headers, timeout=30)
             resp.raise_for_status()
             data = resp.json()
-        except (requests.RequestException, ValueError) as e:
+        except (cf_requests.errors.RequestsError, ValueError) as e:
             logger.error(f"Rentals.ca GraphQL request failed: {e}")
             break
 
