@@ -410,6 +410,34 @@ button:disabled {
 
 /* === Criteria Page === */
 
+.hood-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 0.6rem;
+}
+
+.btn-link {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 0.8rem;
+  padding: 0;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.btn-link:hover:not(:disabled) {
+  color: var(--accent-hover);
+  text-decoration: underline;
+  transform: none;
+  box-shadow: none;
+}
+
+.btn-link:disabled {
+  color: var(--text-muted);
+  cursor: default;
+}
+
 .hood-grid {
   display: flex;
   flex-wrap: wrap;
@@ -417,28 +445,52 @@ button:disabled {
 }
 
 .hood-chip {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  padding: 0.35rem 0.75rem;
+  padding: 0.4rem 0.85rem;
   background: var(--bg-input);
-  border: 1px solid var(--border);
+  border: 2px solid var(--border);
   border-radius: 100px;
   font-size: 0.85rem;
-  color: var(--text-secondary);
+  font-family: var(--font);
+  color: var(--text-muted);
   cursor: pointer;
   transition: all 0.2s;
   user-select: none;
 }
 
-.hood-chip:has(input:checked) {
-  background: var(--accent-glow);
-  border-color: var(--accent);
-  color: var(--text-primary);
+.hood-chip:hover {
+  border-color: var(--border-light);
+  color: var(--text-secondary);
+  background: var(--bg-hover);
+  transform: none;
+  box-shadow: none;
 }
 
-.hood-chip input {
-  display: none;
+.hood-chip.selected {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+  font-weight: 600;
+}
+
+.hood-chip.selected:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+  color: white;
+}
+
+.hood-check {
+  font-size: 0.75rem;
+  line-height: 1;
+}
+
+.legend-count {
+  font-weight: 400;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-left: 0.5rem;
 }
 
 .option-row {
@@ -454,6 +506,32 @@ button:disabled {
   font-size: 0.9rem;
   color: var(--text-secondary);
   cursor: pointer;
+}
+
+/* === Criteria Banners === */
+
+.criteria-banner {
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  margin-bottom: 1.25rem;
+}
+
+.criteria-banner.warning {
+  background: rgba(253, 203, 110, 0.1);
+  border: 1px solid rgba(253, 203, 110, 0.3);
+  color: var(--warning);
+}
+
+/* === Save Button Pulse === */
+
+.btn-pulse {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(108, 92, 231, 0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(108, 92, 231, 0); }
 }
 
 /* === Profile === */
