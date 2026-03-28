@@ -35,42 +35,46 @@ export default function Dashboard() {
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <p>Chargement...</p>;
+  if (loading) return <div className="loading">Chargement...</div>;
 
   return (
-    <div style={{ maxWidth: 900, margin: '2rem auto', padding: '0 1rem' }}>
+    <div className="page">
       <h1>Mes annonces</h1>
-      <p>{total} annonce{total !== 1 ? 's' : ''} trouvée{total !== 1 ? 's' : ''}</p>
+      <p className="stats-bar">
+        {total} annonce{total !== 1 ? 's' : ''} trouvée{total !== 1 ? 's' : ''}
+      </p>
+
       {listings.length === 0 ? (
-        <p style={{ color: '#666' }}>
-          Aucune annonce pour le moment. Configurez vos <a href="/criteria">critères de recherche</a> et les annonces apparaîtront ici après le prochain scan.
-        </p>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {listings.map(l => (
-            <div key={l.listing_id} style={{ border: '1px solid #ddd', borderRadius: 8, padding: '1rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
-                <div>
-                  <a href={l.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: '1.1rem', fontWeight: 'bold' }}>
-                    {l.title || l.address}
-                  </a>
-                  <p style={{ margin: '0.25rem 0', color: '#444' }}>{l.address}</p>
-                </div>
-                <span style={{ fontWeight: 'bold', fontSize: '1.2rem', whiteSpace: 'nowrap' }}>
-                  {l.price.toFixed(0)}$/mois
-                </span>
-              </div>
-              <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem', color: '#666', fontSize: '0.9rem', flexWrap: 'wrap' }}>
-                <span>{l.bedrooms} chambre{l.bedrooms !== 1 ? 's' : ''}</span>
-                <span>{l.furnished === true ? 'Meublé' : l.furnished === false ? 'Non meublé' : 'Meublé: ?'}</span>
-                <span>{l.parking === true ? 'Parking' : l.parking === false ? 'Pas de parking' : 'Parking: ?'}</span>
-                {l.neighbourhood && <span>{l.neighbourhood}</span>}
-                {l.move_in_date && <span>Emménagement: {l.move_in_date}</span>}
-                <span style={{ marginLeft: 'auto' }}>{l.source}</span>
-              </div>
-            </div>
-          ))}
+        <div className="empty-state">
+          <p>Aucune annonce pour le moment.</p>
+          <p>Configurez vos <a href="/criteria">critères de recherche</a> et les annonces apparaîtront ici après le prochain scan.</p>
         </div>
+      ) : (
+        listings.map(l => (
+          <div key={l.listing_id} className="listing-card">
+            <div className="listing-header">
+              <div>
+                <a href={l.url} target="_blank" rel="noopener noreferrer" className="listing-title">
+                  {l.title || l.address}
+                </a>
+                <p className="listing-address">{l.address}</p>
+              </div>
+              <span className="listing-price">{l.price.toFixed(0)}$/mo</span>
+            </div>
+            <div className="listing-meta">
+              <span className="listing-tag">{l.bedrooms} ch.</span>
+              <span className={`listing-tag${l.furnished === null ? ' unknown' : ''}`}>
+                {l.furnished === true ? 'Meublé' : l.furnished === false ? 'Non meublé' : 'Meublé ?'}
+              </span>
+              <span className={`listing-tag${l.parking === null ? ' unknown' : ''}`}>
+                {l.parking === true ? 'Parking' : l.parking === false ? 'Pas de parking' : 'Parking ?'}
+              </span>
+              {l.neighbourhood && <span className="listing-tag">{l.neighbourhood}</span>}
+              {l.move_in_date && <span className="listing-tag">{l.move_in_date}</span>}
+              <span className="listing-tag source">{l.source}</span>
+            </div>
+          </div>
+        ))
       )}
     </div>
   );
