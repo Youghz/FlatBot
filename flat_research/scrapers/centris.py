@@ -69,15 +69,40 @@ def _build_urls(config: dict) -> list[str]:
     return urls
 
 
-def _fetch_detail_text(session: requests.Session, url: str) -> str:
-    """Fetch a Centris detail page and return the full visible text."""
+def _fetch_detail(session: requests.Session, url: str) -> dict:
+    """Fetch a Centris detail page and extract structured listing info.
+
+    Returns dict with 'furnished', 'parking', 'move_in_date' keys,
+    or empty dict on failure.
+    """
     try:
         resp = get(session, url)
-        soup = BeautifulSoup(resp.text, "html.parser")
-        return soup.get_text(" ", strip=True)[:3000]
     except Exception as e:
         logger.debug(f"Could not fetch Centris detail {url}: {e}")
-        return ""
+        return {}
+
+    soup = BeautifulSoup(resp.text, "html.parser")
+    page_text = soup.get_text(" ", strip=True)
+
+    # Extract "Caractéristiques additionnelles" section (contains meublé, semi-meublé, etc.)
+    # and "Description" section for furnished/parking detection
+    parts = []
+    for keyword in ["Caractéristiques additionnelles", "Description"]:
+        idx = page_text.find(keyword)
+        if idx >= 0:
+            parts.append(page_text[idx : idx + 500])
+    detection_text = " ".join(parts) if parts else page_text[:3000]
+
+    furnished, parking = check_furnished_parking(detection_text)
+
+    # Extract "Date d'emménagement" from structured field on the page
+    move_in_date = ""
+    date_idx = page_text.find("Date d'emménagement")
+    if date_idx >= 0:
+        date_section = page_text[date_idx : date_idx + 100]
+        move_in_date = extract_move_in_date(date_section)
+
+    return {"furnished": furnished, "parking": parking, "move_in_date": move_in_date}
 
 
 def _parse_card(card, session: requests.Session | None = None) -> Listing | None:
@@ -126,10 +151,17 @@ def _parse_card(card, session: requests.Session | None = None) -> Listing | None
     else:
         bedrooms = extract_bedrooms_from_text(specs_text)
 
-    # Furnished / parking — try detail page for better detection
-    detail_text = _fetch_detail_text(session, url) if session else ""
-    detection_text = detail_text if detail_text else specs_text
-    furnished, parking = check_furnished_parking(detection_text)
+    # Furnished / parking / move-in from detail page (has structured fields)
+    detail = _fetch_detail(session, url) if session else {}
+    furnished = detail.get("furnished")
+    parking = detail.get("parking")
+    move_in_date = detail.get("move_in_date", "")
+
+    # Fallback to card text if detail page failed
+    if furnished is None and parking is None and not detail:
+        furnished, parking = check_furnished_parking(specs_text)
+    if not move_in_date:
+        move_in_date = extract_move_in_date(specs_text)
 
     # Neighbourhood detection
     neighbourhood = ""
@@ -139,7 +171,6 @@ def _parse_card(card, session: requests.Session | None = None) -> Listing | None
             neighbourhood = name
             break
 
-    move_in_date = extract_move_in_date(specs_text)
     if is_move_in_past(move_in_date):
         return None
 
