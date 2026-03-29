@@ -107,6 +107,9 @@ def _fetch_detail(session: requests.Session, url: str) -> dict:
     if date_idx >= 0:
         date_section = page_text[date_idx : date_idx + 100]
         move_in_date = extract_move_in_date(date_section)
+        # "X jours après l'acceptation" = effectively immediate
+        if not move_in_date and "après" in date_section.lower():
+            move_in_date = "immediate"
 
     # Surface area from "Superficie brute XXX pc"
     surface_sqft = extract_surface_sqft(page_text)
@@ -180,9 +183,9 @@ def _parse_card(card, session: requests.Session | None = None) -> Listing | None
     if not move_in_date:
         move_in_date = extract_move_in_date(specs_text)
 
-    # Neighbourhood detection
+    # Neighbourhood detection — search address, title, URL, and description
     neighbourhood = ""
-    combined = f"{address} {title} {url}".lower()
+    combined = f"{address} {title} {url} {specs_text}".lower()
     for key, name in NEIGHBOURHOOD_KEYWORDS.items():
         if key in combined:
             neighbourhood = name

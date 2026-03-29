@@ -61,10 +61,11 @@ def _extract_listing_id(url: str) -> str:
 
 def _fetch_detail(session: requests.Session, url: str) -> dict:
     """Fetch a Kijiji detail page and return description + metadata."""
-    result = {"description": "", "published_date": "", "surface_sqft": 0}
+    result = {"description": "", "published_date": "", "surface_sqft": 0, "move_in_date": "", "neighbourhood": ""}
     try:
         resp = get(session, url)
         soup = BeautifulSoup(resp.text, "html.parser")
+        page_text = soup.get_text(" ", strip=True)
 
         # Try JSON-LD on detail page (has full description + dates)
         script = soup.find("script", type="application/ld+json")
@@ -84,7 +85,20 @@ def _fetch_detail(session: requests.Session, url: str) -> dict:
 
         # Fallback description: get all visible text
         if not result["description"]:
-            result["description"] = soup.get_text(" ", strip=True)[:2000]
+            result["description"] = page_text[:2000]
+
+        # Move-in date from structured "Available {date}" field
+        avail_match = re.search(r"Available\s+(.+?)(?:\s+Furnished|\s+Utilities|\s+Apartment)", page_text)
+        if avail_match:
+            avail_text = avail_match.group(1).strip()
+            if avail_text and avail_text != "Not":
+                result["move_in_date"] = extract_move_in_date(avail_text)
+
+        # Neighbourhood from "About {name} Explore the area" section
+        hood_match = re.search(r"About\s+(.+?)\s+Explore the area", page_text)
+        if hood_match:
+            result["neighbourhood"] = hood_match.group(1).strip()
+
     except Exception as e:
         logger.debug(f"Could not fetch Kijiji detail {url}: {e}")
     return result
@@ -170,11 +184,14 @@ def scrape(config: dict, session: requests.Session | None = None) -> list[Listin
             if not surface_sqft:
                 surface_sqft = extract_surface_sqft(full_text)
 
-            # Move-in date from full text
-            move_in_date = extract_move_in_date(full_text)
+            # Move-in date: prefer structured field, fallback to text parsing
+            move_in_date = detail.get("move_in_date", "") or extract_move_in_date(full_text)
             if is_move_in_past(move_in_date):
                 logger.debug(f"Skipping past move-in: {title} ({move_in_date})")
                 continue
+
+            # Neighbourhood from detail page "About X" section
+            neighbourhood = detail.get("neighbourhood", "")
 
             listing = Listing(
                 source="kijiji",
@@ -182,7 +199,7 @@ def scrape(config: dict, session: requests.Session | None = None) -> list[Listin
                 price=price,
                 url=item_url,
                 address=address,
-                neighbourhood="",
+                neighbourhood=neighbourhood,
                 bedrooms=bedrooms,
                 furnished=furnished,
                 parking=parking,
