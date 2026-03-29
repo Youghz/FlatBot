@@ -153,6 +153,8 @@ def save_listings(db: Session, listings: list) -> None:
     existing_ids = {r[0] for r in db.query(ListingRecord.listing_id).all()}
     for listing in listings:
         if listing.listing_id not in existing_ids:
+            # "semi" (appliances only) is stored as True in DB — it counts as furnished
+            furnished = True if listing.furnished == "semi" else listing.furnished
             db.add(
                 ListingRecord(
                     listing_id=listing.listing_id,
@@ -163,7 +165,7 @@ def save_listings(db: Session, listings: list) -> None:
                     address=listing.address,
                     neighbourhood=listing.neighbourhood,
                     bedrooms=listing.bedrooms,
-                    furnished=listing.furnished,
+                    furnished=furnished,
                     parking=listing.parking,
                     description=listing.description,
                     move_in_date=listing.move_in_date,
