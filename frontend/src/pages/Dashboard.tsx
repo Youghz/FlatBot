@@ -180,7 +180,7 @@ export default function Dashboard() {
             <table className="listings-table">
               <thead>
                 <tr>
-                  <th onClick={() => handleSort('published_date')} className="sortable">D&eacute;couverte{sortIcon('published_date')}</th>
+                  <th onClick={() => handleSort('published_date')} className="sortable">Date{sortIcon('published_date')}</th>
                   <th>Titre</th>
                   <th onClick={() => handleSort('price')} className="sortable">Prix{sortIcon('price')}</th>
                   <th onClick={() => handleSort('surface_sqft')} className="sortable">Surface{sortIcon('surface_sqft')}</th>
