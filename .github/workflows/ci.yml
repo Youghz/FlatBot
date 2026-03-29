@@ -40,6 +40,14 @@ jobs:
 
       - run: uv sync --frozen --python ${{ env.PYTHON_VERSION }}
 
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Sync GCS fixtures
+        run: uv run python scripts/sync_fixtures.py
+        continue-on-error: true
+
       - name: Lint
         run: uv run ruff check .
 
@@ -117,6 +125,7 @@ jobs:
             --region="${{ env.REGION }}" \
             --project="${{ env.PROJECT_ID }}" \
             --allow-unauthenticated \
+            --update-env-vars="FIXTURES_BUCKET=flatbot-fixtures" \
             --port=8080
 
       - name: Deploy scraper job

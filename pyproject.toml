@@ -23,6 +23,7 @@ dependencies = [
     "python-jose[cryptography]>=3.3.0",
     "slowapi>=0.1.9",
     "curl-cffi>=0.14.0",
+    "google-cloud-storage>=3.10.1",
 ]
 
 [project.scripts]

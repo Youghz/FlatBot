@@ -2,13 +2,13 @@
 
 When a user corrects a listing field in the dashboard, this service:
 1. Fetches the original listing HTML page
-2. Saves it as a test fixture (HTML + TXT)
-3. Appends a labeled entry to samples.json
+2. Uploads HTML + TXT + JSON label to a GCS bucket
+3. These fixtures are downloaded by CI before running pytest
 """
 
 import json
 import logging
-from pathlib import Path
+import os
 
 from bs4 import BeautifulSoup
 
@@ -16,13 +16,37 @@ from flat_research.db import ListingRecord
 
 logger = logging.getLogger(__name__)
 
-FIXTURES_DIR = Path(__file__).resolve().parent.parent.parent / "tests" / "fixtures" / "labeling"
-SAMPLES_FILE = FIXTURES_DIR / "samples.json"
+BUCKET_NAME = os.environ.get("FIXTURES_BUCKET", "flatbot-fixtures")
+SAMPLES_BLOB = "samples.json"
 
 
-def _next_fixture_id(source: str) -> str:
-    """Generate the next fixture_id by incrementing the max index in samples.json."""
-    samples = _load_samples()
+def _get_bucket():
+    from google.cloud import storage
+
+    client = storage.Client()
+    return client.bucket(BUCKET_NAME)
+
+
+def _load_samples_from_gcs() -> list[dict]:
+    """Load samples.json from GCS. Returns empty list if not found."""
+    try:
+        bucket = _get_bucket()
+        blob = bucket.blob(SAMPLES_BLOB)
+        if blob.exists():
+            return json.loads(blob.download_as_text())
+    except Exception as e:
+        logger.warning(f"Could not load samples from GCS: {e}")
+    return []
+
+
+def _save_samples_to_gcs(samples: list[dict]) -> None:
+    bucket = _get_bucket()
+    blob = bucket.blob(SAMPLES_BLOB)
+    data = json.dumps(samples, indent=2, ensure_ascii=False, default=str)
+    blob.upload_from_string(data, content_type="application/json")
+
+
+def _next_fixture_id(source: str, samples: list[dict]) -> str:
     max_idx = 0
     for s in samples:
         try:
@@ -31,19 +55,6 @@ def _next_fixture_id(source: str) -> str:
         except (ValueError, KeyError):
             pass
     return f"{max_idx + 1:02d}_{source}"
-
-
-def _load_samples() -> list[dict]:
-    if not SAMPLES_FILE.exists():
-        return []
-    with open(SAMPLES_FILE) as f:
-        return json.load(f)
-
-
-def _save_samples(samples: list[dict]) -> None:
-    FIXTURES_DIR.mkdir(parents=True, exist_ok=True)
-    with open(SAMPLES_FILE, "w") as f:
-        json.dump(samples, f, indent=2, ensure_ascii=False, default=str)
 
 
 def _fetch_html(url: str, source: str) -> str:
@@ -68,59 +79,60 @@ def _fetch_html(url: str, source: str) -> str:
 def create_fixture(listing: ListingRecord, corrections: dict) -> str | None:
     """Create a test fixture from a user-corrected listing.
 
-    Args:
-        listing: The ListingRecord after DB update
-        corrections: Dict of field names → corrected values (the user's edits)
+    Uploads to GCS bucket:
+    - {fixture_id}.html — raw listing page
+    - {fixture_id}.txt — plain text extraction
+    - samples.json — appended with new labeled entry
 
-    Returns:
-        The fixture_id if created, None on failure
+    Returns the fixture_id if created, None on failure.
     """
-    source = listing.source
-    fixture_id = _next_fixture_id(source)
+    try:
+        source = listing.source
+        samples = _load_samples_from_gcs()
+        fixture_id = _next_fixture_id(source, samples)
+        bucket = _get_bucket()
 
-    # Fetch and save HTML
-    html = _fetch_html(listing.url, source)
-    if html:
-        html_path = FIXTURES_DIR / f"{fixture_id}.html"
-        html_path.write_text(html, encoding="utf-8")
+        # Fetch and upload HTML
+        html = _fetch_html(listing.url, source)
+        if html:
+            bucket.blob(f"{fixture_id}.html").upload_from_string(html, content_type="text/html")
 
-        # Extract plain text for debugging
-        soup = BeautifulSoup(html, "html.parser")
-        txt = soup.get_text(" ", strip=True)[:5000]
-        txt_path = FIXTURES_DIR / f"{fixture_id}.txt"
-        txt_path.write_text(txt, encoding="utf-8")
+            soup = BeautifulSoup(html, "html.parser")
+            txt = soup.get_text(" ", strip=True)[:5000]
+            bucket.blob(f"{fixture_id}.txt").upload_from_string(txt, content_type="text/plain")
 
-    # Build the sample entry
-    entry = {
-        "fixture_id": fixture_id,
-        "source": source,
-        "url": listing.url,
-        "title": listing.title,
-        "price": listing.price,
-        "bedrooms": listing.bedrooms,
-        "address": listing.address,
-        "detected_furnished": listing.furnished,
-        "detected_parking": listing.parking,
-        "description": listing.description[:300],
-        # Labels = the corrected values (ground truth from user)
-        "label_furnished": corrections.get("furnished", listing.furnished),
-        "label_parking": corrections.get("parking", listing.parking),
-        "label_bedrooms": corrections.get("bedrooms", listing.bedrooms),
-        "label_move_in_date": corrections.get("move_in_date", listing.move_in_date),
-        "label_published_date": listing.published_date,
-        "label_neighbourhood": corrections.get("neighbourhood", listing.neighbourhood),
-        "label_address": listing.address,
-        "label_surface_sqft": corrections.get("surface_sqft", listing.surface_sqft),
-        "label_building_condition": "",
-        "label_price": corrections.get("price", listing.price),
-        "label_url": listing.url,
-        "label_parking_type": "",
-    }
+        # Build labeled entry
+        entry = {
+            "fixture_id": fixture_id,
+            "source": source,
+            "url": listing.url,
+            "title": listing.title,
+            "price": listing.price,
+            "bedrooms": listing.bedrooms,
+            "address": listing.address,
+            "detected_furnished": listing.furnished,
+            "detected_parking": listing.parking,
+            "description": listing.description[:300] if listing.description else "",
+            "label_furnished": corrections.get("furnished", listing.furnished),
+            "label_parking": corrections.get("parking", listing.parking),
+            "label_bedrooms": corrections.get("bedrooms", listing.bedrooms),
+            "label_move_in_date": corrections.get("move_in_date", listing.move_in_date),
+            "label_published_date": listing.published_date,
+            "label_neighbourhood": corrections.get("neighbourhood", listing.neighbourhood),
+            "label_address": listing.address,
+            "label_surface_sqft": corrections.get("surface_sqft", listing.surface_sqft),
+            "label_building_condition": "",
+            "label_price": corrections.get("price", listing.price),
+            "label_url": listing.url,
+            "label_parking_type": "",
+        }
 
-    # Append to samples.json
-    samples = _load_samples()
-    samples.append(entry)
-    _save_samples(samples)
+        samples.append(entry)
+        _save_samples_to_gcs(samples)
 
-    logger.info(f"Created test fixture {fixture_id} from user correction on {listing.listing_id}")
-    return fixture_id
+        logger.info(f"Created test fixture {fixture_id} in gs://{BUCKET_NAME}/ from correction on {listing.listing_id}")
+        return fixture_id
+
+    except Exception as e:
+        logger.error(f"Failed to create fixture for {listing.listing_id}: {e}")
+        return None
