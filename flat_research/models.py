@@ -17,3 +17,5 @@ class Listing:
     description: str = ""
     listing_id: str = ""
     move_in_date: str = ""  # YYYY-MM-DD or "immediate" or ""
+    published_date: str = ""  # YYYY-MM-DD or ""
+    surface_sqft: int = 0  # 0 = unknown

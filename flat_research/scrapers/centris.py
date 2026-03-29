@@ -15,6 +15,7 @@ from flat_research.parsing import (
     check_furnished_parking,
     extract_bedrooms_from_text,
     extract_move_in_date,
+    extract_surface_sqft,
     is_move_in_past,
 )
 
@@ -94,15 +95,28 @@ def _fetch_detail(session: requests.Session, url: str) -> dict:
     detection_text = " ".join(parts) if parts else page_text[:3000]
 
     furnished, parking = check_furnished_parking(detection_text)
+    # Force non-None
+    furnished = bool(furnished) if furnished is not None else False
+    parking = bool(parking) if parking is not None else False
 
     # Extract "Date d'emménagement" from structured field on the page
     move_in_date = ""
-    date_idx = page_text.find("Date d'emménagement")
+    date_idx = page_text.find("Date d\u2019emménagement")
+    if date_idx < 0:
+        date_idx = page_text.find("Date d'emménagement")
     if date_idx >= 0:
         date_section = page_text[date_idx : date_idx + 100]
         move_in_date = extract_move_in_date(date_section)
 
-    return {"furnished": furnished, "parking": parking, "move_in_date": move_in_date}
+    # Surface area from "Superficie brute XXX pc"
+    surface_sqft = extract_surface_sqft(page_text)
+
+    return {
+        "furnished": furnished,
+        "parking": parking,
+        "move_in_date": move_in_date,
+        "surface_sqft": surface_sqft,
+    }
 
 
 def _parse_card(card, session: requests.Session | None = None) -> Listing | None:
@@ -151,15 +165,18 @@ def _parse_card(card, session: requests.Session | None = None) -> Listing | None
     else:
         bedrooms = extract_bedrooms_from_text(specs_text)
 
-    # Furnished / parking / move-in from detail page (has structured fields)
+    # Furnished / parking / move-in / surface from detail page
     detail = _fetch_detail(session, url) if session else {}
-    furnished = detail.get("furnished")
-    parking = detail.get("parking")
+    furnished = detail.get("furnished", False)
+    parking = detail.get("parking", False)
     move_in_date = detail.get("move_in_date", "")
+    surface_sqft = detail.get("surface_sqft", 0)
 
     # Fallback to card text if detail page failed
-    if furnished is None and parking is None and not detail:
-        furnished, parking = check_furnished_parking(specs_text)
+    if not detail:
+        f, p = check_furnished_parking(specs_text)
+        furnished = bool(f) if f is not None else False
+        parking = bool(p) if p is not None else False
     if not move_in_date:
         move_in_date = extract_move_in_date(specs_text)
 
@@ -187,6 +204,7 @@ def _parse_card(card, session: requests.Session | None = None) -> Listing | None
         description=specs_text[:300],
         listing_id=f"centris_{lid}",
         move_in_date=move_in_date,
+        surface_sqft=surface_sqft,
     )
 
 

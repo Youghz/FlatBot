@@ -11,19 +11,11 @@ TELEGRAM_API = "https://api.telegram.org/bot{token}/sendMessage"
 
 
 def _furnished_icon(v) -> str:
-    if v is True or v == "semi":
-        return "🛋 Meublé"
-    if v is False:
-        return "📦 Non meublé"
-    return "❓ Meublé inconnu"
+    return "🛋 Meublé" if v else "📦 Non meublé"
 
 
 def _parking_icon(v) -> str:
-    if v is True:
-        return "🅿️ Parking"
-    if v is False:
-        return "🚫 Pas de parking"
-    return "❓ Parking inconnu"
+    return "🅿️ Parking" if v else "🚫 Pas de parking"
 
 
 def _move_in_label(v: str) -> str:

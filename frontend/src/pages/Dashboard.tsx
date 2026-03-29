@@ -10,42 +10,26 @@ interface ListingDetail {
   address: string;
   neighbourhood: string;
   bedrooms: number;
-  furnished: boolean | null;
-  parking: boolean | null;
+  furnished: boolean;
+  parking: boolean;
   description: string;
   move_in_date: string;
+  published_date: string;
+  surface_sqft: number;
   notified_at: string;
 }
 
-type SortKey = 'notified_at' | 'price' | 'bedrooms' | 'neighbourhood' | 'source' | 'furnished' | 'parking' | 'move_in_date';
+type SortKey = 'published_date' | 'price' | 'bedrooms' | 'neighbourhood' | 'source' | 'furnished' | 'parking' | 'move_in_date' | 'surface_sqft';
 type SortDir = 'asc' | 'desc';
 
 const PAGE_SIZE = 50;
-
-function furnishedLabel(v: boolean | null): string {
-  if (v === true) return 'Meublé';
-  if (v === false) return 'Non meublé';
-  return '?';
-}
-
-function parkingLabel(v: boolean | null): string {
-  if (v === true) return 'Oui';
-  if (v === false) return 'Non';
-  return '?';
-}
-
-function furnishedSort(v: boolean | null): number {
-  if (v === true) return 2;
-  if (v === null) return 1;
-  return 0;
-}
 
 export default function Dashboard() {
   const [allListings, setAllListings] = useState<ListingDetail[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
-  const [sortKey, setSortKey] = useState<SortKey>('notified_at');
+  const [sortKey, setSortKey] = useState<SortKey>('published_date');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [filter, setFilter] = useState('');
 
@@ -82,12 +66,18 @@ export default function Dashboard() {
       switch (sortKey) {
         case 'price': cmp = a.price - b.price; break;
         case 'bedrooms': cmp = a.bedrooms - b.bedrooms; break;
+        case 'surface_sqft': cmp = a.surface_sqft - b.surface_sqft; break;
         case 'neighbourhood': cmp = a.neighbourhood.localeCompare(b.neighbourhood); break;
         case 'source': cmp = a.source.localeCompare(b.source); break;
-        case 'furnished': cmp = furnishedSort(a.furnished) - furnishedSort(b.furnished); break;
-        case 'parking': cmp = furnishedSort(a.parking) - furnishedSort(b.parking); break;
+        case 'furnished': cmp = Number(a.furnished) - Number(b.furnished); break;
+        case 'parking': cmp = Number(a.parking) - Number(b.parking); break;
         case 'move_in_date': cmp = a.move_in_date.localeCompare(b.move_in_date); break;
-        case 'notified_at': default: cmp = a.notified_at.localeCompare(b.notified_at); break;
+        case 'published_date': default: {
+          const da = a.published_date || a.notified_at;
+          const db = b.published_date || b.notified_at;
+          cmp = da.localeCompare(db);
+          break;
+        }
       }
       return sortDir === 'asc' ? cmp : -cmp;
     });
@@ -145,9 +135,10 @@ export default function Dashboard() {
             <table className="listings-table">
               <thead>
                 <tr>
-                  <th onClick={() => handleSort('notified_at')} className="sortable">Date{sortIcon('notified_at')}</th>
+                  <th onClick={() => handleSort('published_date')} className="sortable">Publiée{sortIcon('published_date')}</th>
                   <th>Titre</th>
                   <th onClick={() => handleSort('price')} className="sortable">Prix{sortIcon('price')}</th>
+                  <th onClick={() => handleSort('surface_sqft')} className="sortable">Surface{sortIcon('surface_sqft')}</th>
                   <th onClick={() => handleSort('bedrooms')} className="sortable">Ch.{sortIcon('bedrooms')}</th>
                   <th onClick={() => handleSort('furnished')} className="sortable">Meublé{sortIcon('furnished')}</th>
                   <th onClick={() => handleSort('parking')} className="sortable">Parking{sortIcon('parking')}</th>
@@ -159,7 +150,7 @@ export default function Dashboard() {
               <tbody>
                 {pageListings.map(l => (
                   <tr key={l.listing_id}>
-                    <td className="cell-date">{l.notified_at.slice(0, 10)}</td>
+                    <td className="cell-date">{(l.published_date || l.notified_at).slice(0, 10)}</td>
                     <td>
                       <a href={l.url} target="_blank" rel="noopener noreferrer" className="listing-title">
                         {l.title || l.address}
@@ -167,9 +158,10 @@ export default function Dashboard() {
                       <span className="cell-address">{l.address}</span>
                     </td>
                     <td className="cell-price">{l.price.toFixed(0)}$</td>
+                    <td className="cell-center">{l.surface_sqft ? `${l.surface_sqft}` : '-'}</td>
                     <td className="cell-center">{l.bedrooms}</td>
-                    <td className={`cell-center${l.furnished === null ? ' unknown' : ''}`}>{furnishedLabel(l.furnished)}</td>
-                    <td className={`cell-center${l.parking === null ? ' unknown' : ''}`}>{parkingLabel(l.parking)}</td>
+                    <td className="cell-center">{l.furnished ? 'Oui' : 'Non'}</td>
+                    <td className="cell-center">{l.parking ? 'Oui' : 'Non'}</td>
                     <td>{l.neighbourhood}</td>
                     <td className="cell-date">{l.move_in_date}</td>
                     <td><span className="listing-tag source">{l.source}</span></td>

@@ -1,11 +1,34 @@
 """Shared parsing utilities for rental listings.
 
 Handles Quebec notation (5½ = 3 bedrooms), price extraction,
-move-in date parsing, furnished/parking detection, and neighbourhood matching.
+move-in date parsing, furnished/parking detection, surface area extraction,
+and neighbourhood matching.
 """
 
 import re
 from datetime import date, datetime
+
+
+def extract_surface_sqft(text: str) -> int:
+    """Extract surface area in square feet from text. Returns 0 if not found.
+
+    Supports: "450 pc", "1250 pi ca", "1000 sq ft", "675 sqft",
+              "500 pieds carrés", "Superficie brute 450"
+    """
+    patterns = [
+        r"(\d[\d\s]*)\s*(?:pi(?:eds?)?\s*ca(?:rrés?)?|pc\b|p\.c\.)",  # Quebec: pi ca, pc, pieds carrés
+        r"(\d[\d\s]*)\s*(?:sq\.?\s*ft|sqft|square\s*feet)",  # English: sq ft, sqft
+        r"Superficie\s+(?:brute\s+)?(\d[\d\s]*)",  # Centris: "Superficie brute 450"
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, text, re.IGNORECASE)
+        if match:
+            value = match.group(1).replace(" ", "")
+            try:
+                return int(value)
+            except ValueError:
+                continue
+    return 0
 
 
 def extract_bedrooms_from_text(text: str) -> int:

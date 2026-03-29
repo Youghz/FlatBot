@@ -7,6 +7,7 @@ from flat_research.parsing import (
     check_furnished_parking,
     extract_bedrooms_from_text,
     extract_move_in_date,
+    extract_surface_sqft,
     is_move_in_past,
     matches_criteria,
 )
@@ -218,6 +219,25 @@ class TestMatchesCriteria:
         }
         listing = self._make_listing(address="Villeray, Montreal")
         assert matches_criteria(listing, config) is True
+
+
+class TestExtractSurface:
+    @pytest.mark.parametrize(
+        "text,expected",
+        [
+            ("Superficie brute 450 pc", 450),
+            ("Superficie brute 1 240 pc", 1240),
+            ("1250 pi ca", 1250),
+            ("1000 sq ft", 1000),
+            ("675 sqft available", 675),
+            ("500 pieds carrés", 500),
+            ("3320 square feet", 3320),
+            ("Bel appartement lumineux", 0),
+            ("", 0),
+        ],
+    )
+    def test_extract_surface(self, text, expected):
+        assert extract_surface_sqft(text) == expected
 
 
 class TestExtractMoveInDate:
