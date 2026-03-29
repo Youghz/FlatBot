@@ -38,6 +38,8 @@ def _format_listing(listing) -> str:
     title = escape(listing.title[:80])
     address = escape(listing.address)
     neighbourhood = escape(listing.neighbourhood) if listing.neighbourhood else ""
+    url = escape(listing.url)
+    source = escape(listing.source)
 
     # Header: title + price
     lines = [f"<b>{title}</b>"]
@@ -59,7 +61,7 @@ def _format_listing(listing) -> str:
         lines.append(move_in)
 
     # Link + source
-    lines.append(f'🔗 <a href="{listing.url}">Voir l\'annonce</a>  <i>({listing.source})</i>')
+    lines.append(f'🔗 <a href="{url}">Voir l\'annonce</a>  <i>({source})</i>')
 
     return "\n".join(lines)
 
@@ -82,19 +84,25 @@ def send_notification(new_listings: list, chat_id: str, bot_token: str, dashboar
     plural = "s" if n > 1 else ""
     header = f"🏠 <b>{n} nouveau{'x' if n > 1 else ''} logement{plural}</b>\n\n"
 
-    body = "\n\n".join(_format_listing(listing) for listing in new_listings)
+    formatted = [_format_listing(listing) for listing in new_listings]
 
     footer = ""
     if dashboard_url:
-        footer = f'\n\n📊 <a href="{dashboard_url}">Voir le dashboard</a>'
+        footer = f'\n\n📊 <a href="{escape(dashboard_url)}">Voir le dashboard</a>'
 
-    full_text = header + body + footer
-
-    # Telegram has a 4096 char limit per message
+    # Split into messages that fit Telegram's 4096 char limit
+    # Split between listings, never mid-HTML-tag
     messages = []
-    while full_text:
-        messages.append(full_text[:4000])
-        full_text = full_text[4000:]
+    current = header
+    for entry in formatted:
+        candidate = current + entry + "\n\n"
+        if len(candidate) > 3800 and current != header:
+            messages.append(current.rstrip())
+            current = entry + "\n\n"
+        else:
+            current = candidate
+    current += footer
+    messages.append(current.rstrip())
 
     for msg in messages:
         if not _send_message(url, chat_id, msg):
