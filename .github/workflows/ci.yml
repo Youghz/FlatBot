@@ -57,6 +57,9 @@ jobs:
       - name: Unit tests
         run: uv run pytest tests/ -q --ignore=tests/test_integration.py
 
+      - name: Extraction accuracy report
+        run: uv run python scripts/eval.py --no-sync -v
+
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
