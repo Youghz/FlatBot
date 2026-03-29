@@ -142,15 +142,18 @@ def print_report(fields: dict, verbose: bool = False):
 
 def main():
     parser = argparse.ArgumentParser(description="Evaluate extraction accuracy")
-    parser.add_argument("--sync", action="store_true", help="Sync GCS fixtures before eval")
+    parser.add_argument("--no-sync", action="store_true", help="Skip GCS sync (local fixtures only)")
     parser.add_argument("--verbose", "-v", action="store_true", help="Show each mismatch")
     args = parser.parse_args()
 
-    if args.sync:
+    if not args.no_sync:
         print("Syncing GCS fixtures...")
-        from scripts.sync_fixtures import sync
+        try:
+            from scripts.sync_fixtures import sync
 
-        sync()
+            sync()
+        except Exception as e:
+            print(f"GCS sync failed (continuing with local only): {e}")
 
     samples = load_samples()
     # Filter to samples with HTML files
