@@ -130,7 +130,8 @@ def scrape(config: dict, session: requests.Session | None = None) -> list[Listin
                 price = float(offers.get("price", 0))
             except (ValueError, TypeError):
                 price = 0.0
-            published_date = offers.get("validFrom", "")
+            # validFrom is price-valid-from, not publication date — don't use it
+            published_date = ""
 
             # Address
             address = item.get("address", "")
