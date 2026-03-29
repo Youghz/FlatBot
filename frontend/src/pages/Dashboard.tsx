@@ -180,7 +180,7 @@ export default function Dashboard() {
             <table className="listings-table">
               <thead>
                 <tr>
-                  <th onClick={() => handleSort('published_date')} className="sortable">Publi&eacute;e{sortIcon('published_date')}</th>
+                  <th onClick={() => handleSort('published_date')} className="sortable">D&eacute;couverte{sortIcon('published_date')}</th>
                   <th>Titre</th>
                   <th onClick={() => handleSort('price')} className="sortable">Prix{sortIcon('price')}</th>
                   <th onClick={() => handleSort('surface_sqft')} className="sortable">Surface{sortIcon('surface_sqft')}</th>
@@ -245,11 +245,11 @@ export default function Dashboard() {
                       <td className="cell-actions">
                         {isEditing ? (
                           <div className="edit-actions">
-                            <button onClick={saveEdit} disabled={saving} className="btn-save">{saving ? '...' : '\u2713'}</button>
-                            <button onClick={cancelEdit} className="btn-cancel">\u2715</button>
+                            <button onClick={saveEdit} disabled={saving} className="btn-save">{saving ? '...' : 'OK'}</button>
+                            <button onClick={cancelEdit} className="btn-cancel">X</button>
                           </div>
                         ) : (
-                          <button onClick={() => startEdit(l)} className="btn-edit" title="Modifier">\u270E</button>
+                          <button onClick={() => startEdit(l)} className="btn-edit">Modifier</button>
                         )}
                       </td>
                     </tr>
