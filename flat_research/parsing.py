@@ -157,9 +157,11 @@ def check_furnished_parking(text: str) -> tuple[bool | None | str, bool | None]:
     return furnished, parking
 
 
-def has_furnished_negation(text: str) -> bool:
-    """Check if text explicitly denies furnished status."""
-    return any(p in text.lower() for p in _FURNISHED_NEG)
+def coerce_bool(value: bool | str | None) -> bool:
+    """Convert tri-state furnished/parking to concrete bool for DB storage."""
+    if value is None:
+        return False
+    return bool(value)
 
 
 MONTH_FR = {

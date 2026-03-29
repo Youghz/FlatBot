@@ -48,13 +48,10 @@ def get(session: requests.Session, url: str, timeout: int = 30) -> requests.Resp
         now = time.monotonic()
         last = _last_request_time.get(domain, 0)
         wait = _MIN_DELAY - (now - last)
-
-    if wait > 0:
-        time.sleep(wait)
+        if wait > 0:
+            time.sleep(wait)
+        _last_request_time[domain] = time.monotonic()
 
     resp = session.get(url, timeout=timeout)
-
-    with _rate_lock:
-        _last_request_time[domain] = time.monotonic()
     resp.raise_for_status()
     return resp

@@ -146,6 +146,9 @@ def main():
         from flat_research.db import User, get_db
 
         email, new_password = args.reset_password
+        if len(new_password) < 8:
+            logger.error("Password must be at least 8 characters")
+            sys.exit(1)
         db = get_db()
         user = db.query(User).filter(User.email == email).first()
         if not user:

@@ -156,8 +156,10 @@ def save_listings(db: Session, listings: list) -> None:
     for listing in listings:
         if listing.listing_id not in existing_ids:
             # "semi" → True, None → False (DB requires non-null boolean)
-            furnished = bool(listing.furnished) if listing.furnished is not None else False
-            parking = bool(listing.parking) if listing.parking is not None else False
+            from flat_research.parsing import coerce_bool
+
+            furnished = coerce_bool(listing.furnished)
+            parking = coerce_bool(listing.parking)
             db.add(
                 ListingRecord(
                     listing_id=listing.listing_id,

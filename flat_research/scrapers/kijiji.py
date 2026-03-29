@@ -15,6 +15,7 @@ from flat_research.http_client import create_session, get
 from flat_research.models import Listing
 from flat_research.parsing import (
     check_furnished_parking,
+    coerce_bool,
     extract_bedrooms_from_text,
     extract_move_in_date,
     extract_surface_sqft,
@@ -176,8 +177,8 @@ def scrape(config: dict, session: requests.Session | None = None) -> list[Listin
 
             # Detect furnished/parking from full text — force non-None
             furnished, parking = check_furnished_parking(full_text)
-            furnished = bool(furnished) if furnished is not None else False
-            parking = bool(parking) if parking is not None else False
+            furnished = coerce_bool(furnished)
+            parking = coerce_bool(parking)
 
             # Surface from detail page JSON-LD, fallback to text
             surface_sqft = detail["surface_sqft"]
