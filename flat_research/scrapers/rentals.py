@@ -159,6 +159,10 @@ def _node_to_listing(node: dict) -> Listing | None:
         if has_parking is None:
             has_parking = text_parking
 
+    # Force non-None (DB requires concrete boolean)
+    is_furnished = bool(is_furnished) if is_furnished is not None else False
+    has_parking = bool(has_parking) if has_parking is not None else False
+
     # Title
     name = node.get("name") or ""
     title = name if name else street

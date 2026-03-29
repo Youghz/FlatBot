@@ -17,6 +17,7 @@ from flat_research.parsing import (
     check_furnished_parking,
     extract_bedrooms_from_text,
     extract_move_in_date,
+    extract_surface_sqft,
     is_move_in_past,
 )
 
@@ -123,12 +124,13 @@ def scrape(config: dict, session: requests.Session | None = None) -> list[Listin
 
             title = item.get("name", "")
 
-            # Price from offers
+            # Price and published date from offers
             offers = item.get("offers", {})
             try:
                 price = float(offers.get("price", 0))
             except (ValueError, TypeError):
                 price = 0.0
+            published_date = offers.get("validFrom", "")
 
             # Address
             address = item.get("address", "")
@@ -148,8 +150,19 @@ def scrape(config: dict, session: requests.Session | None = None) -> list[Listin
             detail_text = _fetch_detail_description(session, item_url)
             full_text = f"{title} {detail_text}" if detail_text else f"{title} {search_description}"
 
-            # Detect furnished/parking from full text (tri-state: True/False/None)
+            # Detect furnished/parking from full text — force non-None
             furnished, parking = check_furnished_parking(full_text)
+            furnished = bool(furnished) if furnished is not None else False
+            parking = bool(parking) if parking is not None else False
+
+            # Surface from JSON-LD or text
+            floor_size = item.get("floorSize", {})
+            try:
+                surface_sqft = int(float(floor_size.get("value", 0))) if isinstance(floor_size, dict) else 0
+            except (ValueError, TypeError):
+                surface_sqft = 0
+            if not surface_sqft:
+                surface_sqft = extract_surface_sqft(full_text)
 
             # Move-in date from full text
             move_in_date = extract_move_in_date(full_text)
@@ -170,6 +183,8 @@ def scrape(config: dict, session: requests.Session | None = None) -> list[Listin
                 description=(detail_text or search_description)[:300],
                 listing_id=f"kijiji_{lid}",
                 move_in_date=move_in_date,
+                published_date=published_date,
+                surface_sqft=surface_sqft,
             )
             listings.append(listing)
 

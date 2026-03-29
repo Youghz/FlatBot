@@ -22,10 +22,12 @@ class ListingDetail(BaseModel):
     address: str
     neighbourhood: str
     bedrooms: int
-    furnished: bool | None
-    parking: bool | None
+    furnished: bool
+    parking: bool
     description: str
     move_in_date: str
+    published_date: str
+    surface_sqft: int
     notified_at: datetime
 
     model_config = {"from_attributes": True}
@@ -68,6 +70,8 @@ def get_listings(
                 parking=record.parking,
                 description=record.description,
                 move_in_date=record.move_in_date,
+                published_date=record.published_date,
+                surface_sqft=record.surface_sqft,
                 notified_at=notified_at,
             )
         )

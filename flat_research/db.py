@@ -71,10 +71,12 @@ class ListingRecord(Base):
     address = Column(String(500), nullable=False, default="")
     neighbourhood = Column(String(100), nullable=False, default="")
     bedrooms = Column(Integer, nullable=False, default=0)
-    furnished = Column(Boolean, nullable=True)
-    parking = Column(Boolean, nullable=True)
+    furnished = Column(Boolean, nullable=False, default=False)
+    parking = Column(Boolean, nullable=False, default=False)
     description = Column(Text, nullable=False, default="")
     move_in_date = Column(String(20), nullable=False, default="")
+    published_date = Column(String(20), nullable=False, default="")
+    surface_sqft = Column(Integer, nullable=False, default=0)
     scraped_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     seen_by = relationship("SeenListing", back_populates="listing")
@@ -153,8 +155,9 @@ def save_listings(db: Session, listings: list) -> None:
     existing_ids = {r[0] for r in db.query(ListingRecord.listing_id).all()}
     for listing in listings:
         if listing.listing_id not in existing_ids:
-            # "semi" (appliances only) is stored as True in DB — it counts as furnished
-            furnished = True if listing.furnished == "semi" else listing.furnished
+            # "semi" → True, None → False (DB requires non-null boolean)
+            furnished = bool(listing.furnished) if listing.furnished is not None else False
+            parking = bool(listing.parking) if listing.parking is not None else False
             db.add(
                 ListingRecord(
                     listing_id=listing.listing_id,
@@ -166,9 +169,11 @@ def save_listings(db: Session, listings: list) -> None:
                     neighbourhood=listing.neighbourhood,
                     bedrooms=listing.bedrooms,
                     furnished=furnished,
-                    parking=listing.parking,
+                    parking=parking,
                     description=listing.description,
-                    move_in_date=listing.move_in_date,
+                    move_in_date=listing.move_in_date or "",
+                    published_date=listing.published_date or "",
+                    surface_sqft=listing.surface_sqft or 0,
                 )
             )
             existing_ids.add(listing.listing_id)
