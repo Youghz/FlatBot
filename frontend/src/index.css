@@ -697,6 +697,88 @@ button:disabled {
   font-size: 0.8rem;
 }
 
+/* === Inline Edit === */
+
+.editing-row {
+  background: var(--accent-glow) !important;
+}
+
+.edit-input {
+  width: 100%;
+  padding: 0.25rem 0.4rem;
+  background: var(--bg-input);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 0.82rem;
+  font-family: var(--font);
+}
+
+.edit-num {
+  width: 70px;
+}
+
+.cell-actions {
+  white-space: nowrap;
+  text-align: center;
+}
+
+.edit-actions {
+  display: flex;
+  gap: 0.3rem;
+}
+
+.btn-edit {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  padding: 0.2rem 0.45rem;
+  font-size: 0.85rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.btn-edit:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-glow);
+  transform: none;
+  box-shadow: none;
+}
+
+.btn-save {
+  background: var(--success);
+  color: white;
+  border: none;
+  padding: 0.2rem 0.5rem;
+  font-size: 0.85rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.btn-save:hover:not(:disabled) {
+  opacity: 0.9;
+  transform: none;
+  box-shadow: none;
+}
+
+.btn-cancel {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  padding: 0.2rem 0.5rem;
+  font-size: 0.85rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.btn-cancel:hover {
+  color: var(--danger);
+  border-color: var(--danger);
+  transform: none;
+  box-shadow: none;
+}
+
 /* === Pagination === */
 
 .pagination {
