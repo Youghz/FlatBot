@@ -59,28 +59,35 @@ def _extract_listing_id(url: str) -> str:
     return match.group(1) if match else ""
 
 
-def _fetch_detail_description(session: requests.Session, url: str) -> str:
-    """Fetch a Kijiji detail page and return the full description text."""
+def _fetch_detail(session: requests.Session, url: str) -> dict:
+    """Fetch a Kijiji detail page and return description + metadata."""
+    result = {"description": "", "published_date": "", "surface_sqft": 0}
     try:
         resp = get(session, url)
         soup = BeautifulSoup(resp.text, "html.parser")
 
-        # Try JSON-LD on detail page (has full description)
+        # Try JSON-LD on detail page (has full description + dates)
         script = soup.find("script", type="application/ld+json")
         if script:
             try:
                 data = json.loads(script.string)
-                desc = data.get("description", "")
-                if desc:
-                    return desc
+                result["description"] = data.get("description", "")
+                result["published_date"] = data.get("offers", {}).get("validFrom", "")
+                floor_size = data.get("floorSize", {})
+                if isinstance(floor_size, dict):
+                    try:
+                        result["surface_sqft"] = int(float(floor_size.get("value", 0)))
+                    except (ValueError, TypeError):
+                        pass
             except (json.JSONDecodeError, TypeError):
                 pass
 
-        # Fallback: get all visible text
-        return soup.get_text(" ", strip=True)[:2000]
+        # Fallback description: get all visible text
+        if not result["description"]:
+            result["description"] = soup.get_text(" ", strip=True)[:2000]
     except Exception as e:
         logger.debug(f"Could not fetch Kijiji detail {url}: {e}")
-        return ""
+    return result
 
 
 def scrape(config: dict, session: requests.Session | None = None) -> list[Listing]:
@@ -130,8 +137,8 @@ def scrape(config: dict, session: requests.Session | None = None) -> list[Listin
                 price = float(offers.get("price", 0))
             except (ValueError, TypeError):
                 price = 0.0
-            # validFrom is price-valid-from, not publication date — don't use it
-            published_date = ""
+            # validFrom in Kijiji JSON-LD is the listing publication date
+            published_date = offers.get("validFrom", "")
 
             # Address
             address = item.get("address", "")
@@ -147,8 +154,10 @@ def scrape(config: dict, session: requests.Session | None = None) -> list[Listin
             # Search-page description (may be truncated)
             search_description = item.get("description", "")
 
-            # Fetch detail page for full description
-            detail_text = _fetch_detail_description(session, item_url)
+            # Fetch detail page for full description, published date, surface
+            detail = _fetch_detail(session, item_url)
+            detail_text = detail["description"]
+            published_date = detail["published_date"]
             full_text = f"{title} {detail_text}" if detail_text else f"{title} {search_description}"
 
             # Detect furnished/parking from full text — force non-None
@@ -156,12 +165,8 @@ def scrape(config: dict, session: requests.Session | None = None) -> list[Listin
             furnished = bool(furnished) if furnished is not None else False
             parking = bool(parking) if parking is not None else False
 
-            # Surface from JSON-LD or text
-            floor_size = item.get("floorSize", {})
-            try:
-                surface_sqft = int(float(floor_size.get("value", 0))) if isinstance(floor_size, dict) else 0
-            except (ValueError, TypeError):
-                surface_sqft = 0
+            # Surface from detail page JSON-LD, fallback to text
+            surface_sqft = detail["surface_sqft"]
             if not surface_sqft:
                 surface_sqft = extract_surface_sqft(full_text)
 
