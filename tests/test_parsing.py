@@ -2,7 +2,6 @@
 
 import pytest
 
-from flat_research.models import Listing
 from flat_research.parsing import (
     check_furnished_parking,
     extract_bedrooms_from_text,
@@ -90,6 +89,8 @@ class TestMatchesCriteria:
     }
 
     def _make_listing(self, **kwargs):
+        from flat_research.models import Listing
+
         defaults = {
             "price": 2500,
             "bedrooms": 3,

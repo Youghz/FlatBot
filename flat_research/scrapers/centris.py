@@ -13,6 +13,7 @@ from flat_research.http_client import create_session, get
 from flat_research.models import Listing
 from flat_research.parsing import (
     check_furnished_parking,
+    coerce_bool,
     extract_bedrooms_from_text,
     extract_move_in_date,
     extract_surface_sqft,
@@ -95,9 +96,8 @@ def _fetch_detail(session: requests.Session, url: str) -> dict:
     detection_text = " ".join(parts) if parts else page_text[:3000]
 
     furnished, parking = check_furnished_parking(detection_text)
-    # Force non-None
-    furnished = bool(furnished) if furnished is not None else False
-    parking = bool(parking) if parking is not None else False
+    furnished = coerce_bool(furnished)
+    parking = coerce_bool(parking)
 
     # Extract "Date d'emménagement" from structured field on the page
     move_in_date = ""
@@ -175,11 +175,13 @@ def _parse_card(card, session: requests.Session | None = None) -> Listing | None
     move_in_date = detail.get("move_in_date", "")
     surface_sqft = detail.get("surface_sqft", 0)
 
-    # Fallback to card text if detail page failed
-    if not detail:
+    # Fallback to card text if detail page returned no furnished/parking info
+    if furnished is False and parking is False and not detail.get("furnished") and not detail.get("parking"):
         f, p = check_furnished_parking(specs_text)
-        furnished = bool(f) if f is not None else False
-        parking = bool(p) if p is not None else False
+        if f is not None:
+            furnished = bool(f)
+        if p is not None:
+            parking = bool(p)
     if not move_in_date:
         move_in_date = extract_move_in_date(specs_text)
 

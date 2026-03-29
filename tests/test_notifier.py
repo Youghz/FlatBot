@@ -6,7 +6,7 @@ from flat_research.models import Listing
 from flat_research.notifier import send_notification
 
 
-def _make_listing(**kwargs):
+def make_listing(**kwargs) -> Listing:
     defaults = {
         "source": "kijiji",
         "title": "Bel appart 5½ Villeray",
@@ -34,7 +34,7 @@ class TestNotifierFormatting:
         mock_post.return_value.status_code = 200
         mock_post.return_value.raise_for_status = lambda: None
 
-        listing = _make_listing()
+        listing = make_listing()
         send_notification([listing], CHAT_ID, BOT_TOKEN)
 
         mock_post.assert_called_once()
@@ -46,7 +46,7 @@ class TestNotifierFormatting:
 
     @patch("flat_research.notifier.requests.post")
     def test_skips_when_no_token(self, mock_post):
-        send_notification([_make_listing()], CHAT_ID, "")
+        send_notification([make_listing()], CHAT_ID, "")
         mock_post.assert_not_called()
 
     @patch("flat_research.notifier.requests.post")
@@ -59,7 +59,7 @@ class TestNotifierFormatting:
         mock_post.return_value.status_code = 200
         mock_post.return_value.raise_for_status = lambda: None
 
-        listing = _make_listing(title="<script>alert('xss')</script>")
+        listing = make_listing(title="<script>alert('xss')</script>")
         send_notification([listing], CHAT_ID, BOT_TOKEN)
 
         payload = mock_post.call_args[1]["json"]
@@ -71,7 +71,7 @@ class TestNotifierFormatting:
         mock_post.return_value.status_code = 200
         mock_post.return_value.raise_for_status = lambda: None
 
-        listings = [_make_listing(title=f"Listing {i} " + "x" * 200, listing_id=f"kijiji_{i}") for i in range(30)]
+        listings = [make_listing(title=f"Listing {i} " + "x" * 200, listing_id=f"kijiji_{i}") for i in range(30)]
         send_notification(listings, CHAT_ID, BOT_TOKEN)
 
         assert mock_post.call_count >= 2

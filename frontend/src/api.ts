@@ -19,7 +19,18 @@ export function isLoggedIn(): boolean {
   return accessToken !== null || refreshToken !== null;
 }
 
+// Single refresh lock — prevents parallel refresh attempts
+let refreshPromise: Promise<boolean> | null = null;
+
 async function refreshAccessToken(): Promise<boolean> {
+  if (refreshPromise) return refreshPromise;
+  refreshPromise = doRefresh();
+  const result = await refreshPromise;
+  refreshPromise = null;
+  return result;
+}
+
+async function doRefresh(): Promise<boolean> {
   if (!refreshToken) return false;
   try {
     const res = await fetch(`${API_BASE}/auth/refresh`, {

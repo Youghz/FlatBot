@@ -160,8 +160,10 @@ def _node_to_listing(node: dict) -> Listing | None:
             has_parking = text_parking
 
     # Force non-None (DB requires concrete boolean)
-    is_furnished = bool(is_furnished) if is_furnished is not None else False
-    has_parking = bool(has_parking) if has_parking is not None else False
+    from flat_research.parsing import coerce_bool
+
+    is_furnished = coerce_bool(is_furnished)
+    has_parking = coerce_bool(has_parking)
 
     # Title
     name = node.get("name") or ""
