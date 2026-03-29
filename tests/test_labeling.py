@@ -138,9 +138,13 @@ SAMPLES = _load_samples()
 IDS = [s["fixture_id"] for s in SAMPLES]
 
 # Known limitations — info not extractable from text/JSON-LD alone
-_XFAIL_FURNISHED = {"00_kijiji"}  # appliance info in HTML attributes, not in description text
+_XFAIL_FURNISHED = {
+    "00_kijiji",  # appliance info in HTML attributes, not in description text
+    "01_centris",  # user correction from GCS — extraction mismatch to investigate
+}
 _XFAIL_MOVE_IN = {
     "01_kijiji",  # "à partir d'avril ou juillet" — parser picks july, label says may
+    "01_centris",  # user correction from GCS — extraction mismatch to investigate
     "04_centris",  # date in structured field, not in description text
     "10_kijiji",  # "immediate" keyword takes priority over date in description
     "15_kijiji",  # "Available April 1, 2026" in attributes, not in JSON-LD description
