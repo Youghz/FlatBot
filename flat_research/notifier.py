@@ -10,14 +10,17 @@ logger = logging.getLogger(__name__)
 TELEGRAM_API = "https://api.telegram.org/bot{token}/sendMessage"
 
 
-def send_notification(new_listings: list, chat_id: str, bot_token: str, dashboard_url: str = "") -> None:
-    """Send a Telegram message with new listings to a specific chat."""
+def send_notification(new_listings: list, chat_id: str, bot_token: str, dashboard_url: str = "") -> bool:
+    """Send a Telegram message with new listings to a specific chat.
+
+    Returns True if all messages were sent successfully, False otherwise.
+    """
     if not bot_token or not chat_id:
         logger.warning("Telegram bot_token or chat_id not configured. Skipping notification.")
-        return
+        return False
 
     if not new_listings:
-        return
+        return True
 
     url = TELEGRAM_API.format(token=bot_token)
 
@@ -57,10 +60,13 @@ def send_notification(new_listings: list, chat_id: str, bot_token: str, dashboar
         summary = summary[4000:]
 
     for msg in messages:
-        _send_message(url, chat_id, msg)
+        if not _send_message(url, chat_id, msg):
+            return False
+    return True
 
 
-def _send_message(url: str, chat_id: str | int, text: str) -> None:
+def _send_message(url: str, chat_id: str | int, text: str) -> bool:
+    """Send a single Telegram message. Returns True on success."""
     payload = {
         "chat_id": int(chat_id),
         "text": text,
@@ -72,7 +78,9 @@ def _send_message(url: str, chat_id: str | int, text: str) -> None:
         resp = requests.post(url, json=payload, timeout=10)
         resp.raise_for_status()
         logger.info("Telegram notification sent")
+        return True
     except requests.RequestException as e:
         logger.error(f"Telegram notification failed: {e}")
         if resp is not None:
             logger.error(f"Response: {resp.text[:200]}")
+        return False
