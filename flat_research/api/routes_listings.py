@@ -4,12 +4,13 @@ import logging
 import threading
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
 from sqlalchemy import desc
 from sqlalchemy.orm import Session
 
 from flat_research.api.dependencies import get_current_user, get_db
+from flat_research.api.rate_limit import limiter
 from flat_research.db import ListingRecord, SeenListing, User
 
 logger = logging.getLogger(__name__)
@@ -94,7 +95,9 @@ def get_listings(
 
 
 @router.patch("/{listing_id}", response_model=ListingDetail)
+@limiter.limit("10/minute")
 def update_listing(
+    request: Request,
     listing_id: str,
     body: ListingUpdate,
     user: User = Depends(get_current_user),
