@@ -1,79 +1,93 @@
 # FlatBot
 
-Automated Montreal apartment finder. Scrapes rental listings from Kijiji, Centris and Rentals.ca, filters by criteria (price, bedrooms, neighbourhood, furnished, parking), stores results in a Google Sheet, and sends Telegram notifications for new matches.
+Automated apartment search platform for Montreal. Scrapes rental listings from multiple sources, applies smart filtering based on user criteria, and sends real-time Telegram notifications.
 
-## How it works
+## Architecture
 
-1. Scrapes Kijiji (JSON-LD), Centris (HTML) and Rentals.ca (GraphQL API) in parallel
-2. Filters listings by price, bedrooms, neighbourhood, furnished/parking
-3. Deduplicates against existing entries in Google Sheets
-4. Sends a Telegram message for each new listing
-5. Removes expired listings (past move-in dates) from the sheet
+```
+┌─────────────┐     ┌──────────────┐     ┌──────────────┐
+│   Kijiji    │     │   Centris    │     │  Rentals.ca  │
+│  (HTML/LD)  │     │  (HTML/CSS)  │     │  (GraphQL)   │
+└──────┬──────┘     └──────┬───────┘     └──────┬───────┘
+       │                   │                    │
+       └───────────┬───────┘────────────────────┘
+                   ▼
+         ┌─────────────────┐
+         │  Scraper Engine  │   Python + BeautifulSoup + curl_cffi
+         │  (Cloud Run Job) │   Cloudflare bypass via TLS fingerprinting
+         └────────┬────────┘
+                  ▼
+         ┌─────────────────┐
+         │   PostgreSQL    │   Cloud SQL
+         │   (listings)    │   Alembic migrations
+         └────────┬────────┘
+                  ▼
+    ┌─────────────┴──────────────┐
+    ▼                            ▼
+┌──────────┐            ┌──────────────┐
+│ Telegram │            │   React SPA  │
+│   Bot    │            │  (Dashboard) │
+│  Notifs  │            │              │
+└──────────┘            └──────────────┘
+```
 
-## Setup
+## Tech Stack
 
-### Prerequisites
+### Backend
+- **Python 3.12** with **FastAPI** — REST API with JWT authentication
+- **SQLAlchemy 2.0** + **PostgreSQL** — ORM with Alembic migrations
+- **BeautifulSoup4** — HTML parsing for Kijiji and Centris
+- **curl_cffi** — Chrome TLS fingerprint impersonation to bypass Cloudflare
+- **bcrypt** — Password hashing with timing-safe verification
+- **python-jose** — JWT access/refresh token management
+- **slowapi** — Rate limiting on authentication and webhook endpoints
 
-- Python 3.12+
-- [uv](https://docs.astral.sh/uv/)
-- Google Cloud credentials (ADC) for Sheets access
-- Telegram bot token and chat ID
+### Frontend
+- **React 19** + **TypeScript 5.9** — Single Page Application
+- **Vite 8** — Build tooling with HMR
+- **React Router 7** — Client-side routing with protected routes
+- **CSS Custom Properties** — Dark theme design system, no framework dependency
 
-### Install
+### Infrastructure
+- **Google Cloud Run** — Serverless deployment (web service + scraper job)
+- **Google Cloud SQL** — Managed PostgreSQL
+- **Google Cloud Storage** — Test fixture persistence for regression testing
+- **Docker** — Multi-stage builds with non-root user, BuildX layer caching
+- **GitHub Actions** — CI/CD with lint, test, build, deploy, smoke test pipeline
+
+### Data Pipeline
+- **NLP-based field extraction** — Furnished/parking/move-in detection from French+English text
+- **Tri-state classification** — `True`/`False`/`"semi"` for appliances-only listings
+- **Fixture-based regression testing** — 18+ hand-labeled HTML fixtures with automated accuracy tracking
+- **User feedback loop** — Dashboard corrections auto-generate test fixtures via GCS bucket
+
+## Key Features
+
+- **Multi-source scraping** — Kijiji (JSON-LD), Centris (HTML), Rentals.ca (GraphQL)
+- **Per-user criteria** — Price, bedrooms, neighbourhoods, furnished, parking, move-in date
+- **Smart notifications** — Telegram bot with structured message format
+- **Inline editing** — Correct extracted fields directly in the dashboard
+- **Automated testing** — User corrections become regression tests automatically
+- **Extraction accuracy tracking** — `scripts/eval.py` reports accuracy per field
+
+## Development
 
 ```bash
+# Install dependencies
 uv sync
-```
 
-### Configure
+# Run API server
+uv run python -m flat_research --serve
 
-Copy `.env.example` to `.env` (or set environment variables directly):
+# Run scraper
+uv run python -m flat_research --scrape-multi
 
-```
-GOOGLE_SPREADSHEET_ID=your_spreadsheet_id
-TELEGRAM_BOT_TOKEN=your_bot_token
-TELEGRAM_CHAT_ID=your_chat_id
-```
-
-Edit `config.yaml` to adjust search criteria (neighbourhoods, price range, bedrooms).
-
-### Run
-
-```bash
-# Single run
-uv run python -m flat_research
-
-# Scheduled (every hour by default)
-uv run python -m flat_research --schedule
-
-# Health check (tests all connections)
-uv run python -m flat_research --check
-```
-
-## Project structure
-
-```
-flat_research/
-  __main__.py      # Entry point, config loading, orchestration
-  models.py        # Listing dataclass
-  parsing.py       # Shared parsing (Quebec notation, dates, furnished/parking)
-  http_client.py   # HTTP session with retries and rate limiting
-  sheets.py        # Google Sheets integration
-  notifier.py      # Telegram notifications
-  scrapers/
-    centris.py     # Centris scraper (HTML)
-    kijiji.py      # Kijiji scraper (JSON-LD)
-    rentals.py     # Rentals.ca scraper (GraphQL API)
-```
-
-## Tests
-
-```bash
+# Run tests (206 tests)
 uv run pytest
+
+# Extraction accuracy report
+uv run python scripts/eval.py -v
+
+# Frontend
+cd frontend && npm ci && npm run dev
 ```
-
-Tests use saved HTML/JSON fixtures to validate scrapers without network requests.
-
-## Deployment
-
-Runs as a Google Cloud Run Job, triggered hourly by Cloud Scheduler. See `.github/workflows/ci.yml` for the CI/CD pipeline.
