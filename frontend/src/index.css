@@ -995,6 +995,38 @@ legend {
   font-size: 0.8rem;
 }
 
+/* Demo Section */
+
+.demo-section {
+  padding: 3rem 0;
+  position: relative;
+}
+
+.demo-section h2 {
+  text-align: center;
+  margin-bottom: 0.5rem;
+  font-size: 1.5rem;
+}
+
+.demo-subtitle {
+  text-align: center;
+  color: var(--text-muted);
+  margin-bottom: 1.5rem;
+  font-size: 0.9rem;
+}
+
+.demo-section .table-wrapper {
+  mask-image: linear-gradient(to bottom, black 50%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, black 50%, transparent 100%);
+}
+
+.demo-overlay {
+  text-align: center;
+  margin-top: -1rem;
+  position: relative;
+  z-index: 2;
+}
+
 /* Mobile */
 
 @media (max-width: 600px) {

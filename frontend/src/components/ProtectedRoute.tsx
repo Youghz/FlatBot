@@ -3,7 +3,7 @@ import { isLoggedIn } from '../api';
 
 export default function ProtectedRoute({ children }: { children: React.ReactNode }) {
   if (!isLoggedIn()) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/" replace />;
   }
   return <>{children}</>;
 }
