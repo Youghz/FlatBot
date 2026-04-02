@@ -1,7 +1,7 @@
-"""Multi-user scraper job.
+"""Scraper job.
 
-Scrapes once with union criteria from all users, then filters
-and notifies per user.
+Scrapes the latest 50 listings from each source (no filters),
+saves everything to DB, then filters per user and notifies.
 """
 
 import logging
@@ -9,7 +9,6 @@ import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from flat_research.db import (
-    SearchCriteria,
     criteria_to_config,
     get_all_active_criteria,
     get_db,
@@ -26,56 +25,21 @@ from flat_research.scrapers import SCRAPERS
 logger = logging.getLogger(__name__)
 
 
-def compute_union_criteria(all_criteria: list[SearchCriteria]) -> dict:
-    """Compute the widest (least restrictive) criteria from all users.
-
-    This is used to build API query parameters that cover all users' needs.
-    Per-user filtering happens after scraping.
-    """
-    all_hoods: dict[str, list[str]] = {}
-    price_min = min(c.price_min for c in all_criteria)
-    price_max = max(c.price_max for c in all_criteria)
-    bedrooms_min = min(c.bedrooms_min for c in all_criteria)
-
-    for c in all_criteria:
-        hoods = c.neighbourhoods or {}
-        if isinstance(hoods, dict):
-            for name, variants in hoods.items():
-                if name not in all_hoods:
-                    all_hoods[name] = list(variants)
-                else:
-                    existing = set(all_hoods[name])
-                    all_hoods[name].extend(v for v in variants if v not in existing)
-
-    return {
-        "criteria": {
-            "neighbourhoods": all_hoods,
-            "price_min": price_min,
-            "price_max": price_max,
-            "bedrooms_min": bedrooms_min,
-            "furnished": False,
-            "parking": False,
-        },
-        "sources": list(SCRAPERS.keys()),
-    }
-
-
-def scrape_all(config: dict) -> list[Listing]:
+def scrape_all() -> list[Listing]:
     """Run all scrapers in parallel and return combined raw listings."""
     all_listings: list[Listing] = []
-    sources = config.get("sources", [])
     timeout_s = 240
 
-    active_scrapers = {}
-    for name in sources:
-        if name in SCRAPERS:
-            active_scrapers[name] = (SCRAPERS[name], create_session())
+    # Each scraper gets its own session (Rentals creates its own internally)
+    scraper_args = {}
+    for name, fn in SCRAPERS.items():
+        if name == "rentals":
+            scraper_args[name] = (fn, {})
+        else:
+            scraper_args[name] = (fn, {"session": create_session()})
 
-    if not active_scrapers:
-        return all_listings
-
-    with ThreadPoolExecutor(max_workers=len(active_scrapers)) as pool:
-        futures = {pool.submit(fn, config, session): name for name, (fn, session) in active_scrapers.items()}
+    with ThreadPoolExecutor(max_workers=len(scraper_args)) as pool:
+        futures = {pool.submit(fn, **kwargs): name for name, (fn, kwargs) in scraper_args.items()}
         for future in as_completed(futures, timeout=timeout_s):
             name = futures[future]
             try:
@@ -90,26 +54,24 @@ def scrape_all(config: dict) -> list[Listing]:
 
 
 def run_multi_user() -> bool:
-    """Scrape once with union criteria, then filter and notify per user."""
+    """Scrape latest listings, save to DB, filter and notify per user."""
     db = get_db()
     try:
-        user_criteria_pairs = get_all_active_criteria(db)
-        if not user_criteria_pairs:
-            logger.info("No active users with criteria. Nothing to do.")
-            return True
-
-        all_criteria = [criteria for _, criteria in user_criteria_pairs]
-        union_config = compute_union_criteria(all_criteria)
-        logger.info(f"Scraping for {len(user_criteria_pairs)} users with union criteria")
-
-        all_listings = scrape_all(union_config)
+        # 1. Scrape all sources (no filters — latest 50 per source)
+        all_listings = scrape_all()
         if not all_listings:
             logger.info("No listings scraped this cycle.")
             return True
 
-        # Save all scraped listings to DB
+        # 2. Save to DB
         save_listings(db, all_listings)
         logger.info("Listings saved to DB")
+
+        # 3. Filter per user and notify
+        user_criteria_pairs = get_all_active_criteria(db)
+        if not user_criteria_pairs:
+            logger.info("No active users with criteria.")
+            return True
 
         bot_token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
         notified_count = 0
@@ -145,7 +107,7 @@ def run_multi_user() -> bool:
         return True
 
     except Exception as e:
-        logger.error(f"Multi-user scrape failed: {e}")
+        logger.error(f"Scrape failed: {e}")
         return False
     finally:
         db.close()

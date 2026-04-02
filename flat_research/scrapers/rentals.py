@@ -185,10 +185,9 @@ def _node_to_listing(node: dict) -> Listing | None:
     )
 
 
-def scrape(config: dict, session: cf_requests.Session | None = None) -> list[Listing]:
-    """Scrape Rentals.ca for matching rental listings."""
+def scrape(session: cf_requests.Session | None = None) -> list[Listing]:
+    """Scrape latest Rentals.ca listings for Montreal (no filters)."""
     listings = []
-    criteria = config["criteria"]
 
     # Use curl_cffi with Chrome TLS fingerprint to bypass Cloudflare
     session = cf_requests.Session(impersonate="chrome")
@@ -205,14 +204,12 @@ def scrape(config: dict, session: cf_requests.Session | None = None) -> list[Lis
         "Authorization": f"Bearer {token}",
     }
 
-    filters = _build_filters(criteria)
     variables = {
         "first": MAX_RESULTS,
         "place": {"namedArea": "montreal,qc,ca"},
-        "filters": filters,
     }
 
-    logger.info(f"Scraping Rentals.ca: filters={filters}")
+    logger.info("Scraping Rentals.ca: latest 50, no filters")
 
     seen_ids = set()
     cursor = None

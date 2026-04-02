@@ -11,7 +11,7 @@ from bs4 import BeautifulSoup
 
 from flat_research.http_client import create_session, get
 from flat_research.models import Listing
-from flat_research.neighbourhoods import NEIGHBOURHOODS, build_keyword_map
+from flat_research.neighbourhoods import build_keyword_map
 from flat_research.parsing import (
     check_furnished_parking,
     coerce_bool,
@@ -29,26 +29,9 @@ CENTRIS_BASE = "https://www.centris.ca"
 NEIGHBOURHOOD_KEYWORDS = build_keyword_map()
 
 
-def _build_urls(config: dict) -> list[str]:
-    """Build Centris search URLs with filters in the path."""
-    from flat_research.parsing import get_neighbourhood_names
-
-    neighbourhood_names = get_neighbourhood_names(config["criteria"])
-
-    # Deduplicate borough slugs using central registry
-    slugs = []
-    for n in neighbourhood_names:
-        entry = NEIGHBOURHOODS.get(n, {})
-        slug = entry.get("centris_slug", "")
-        if slug and slug not in slugs:
-            slugs.append(slug)
-
-    urls = []
-    for slug in slugs:
-        url = f"{CENTRIS_BASE}/fr/propriete~a-louer~{slug}"
-        urls.append(url)
-
-    return urls
+def _build_urls() -> list[str]:
+    """Build Centris search URLs — one global Montreal page."""
+    return [f"{CENTRIS_BASE}/fr/propriete~a-louer~montreal"]
 
 
 def _fetch_detail(session: requests.Session, url: str) -> dict:
@@ -193,15 +176,15 @@ def _parse_card(card, session: requests.Session | None = None) -> Listing | None
     )
 
 
-def scrape(config: dict, session: requests.Session | None = None) -> list[Listing]:
-    """Scrape Centris for matching rental listings."""
+def scrape(session: requests.Session | None = None) -> list[Listing]:
+    """Scrape latest Centris rental listings for Montreal (no filters)."""
     listings = []
     seen_ids = set()
 
     if session is None:
         session = create_session()
 
-    urls = _build_urls(config)
+    urls = _build_urls()
 
     for url in urls:
         logger.info(f"Scraping Centris: {url}")

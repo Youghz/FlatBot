@@ -91,30 +91,14 @@ class TestKijjiFixture:
 
 
 class TestCentrisUrls:
-    def test_build_urls_deduplicates(self):
-        urls = _build_urls(CONFIG)
-        # Villeray, Mile-Ex, Petite-Italie all map to same borough
-        assert len(urls) == len(set(urls)), "Duplicate URLs generated"
+    def test_build_urls_returns_global_montreal(self):
+        urls = _build_urls()
+        assert len(urls) == 1
+        assert "montreal" in urls[0]
 
-    def test_build_urls_contains_boroughs(self):
-        urls = _build_urls(CONFIG)
-        slugs = [u.split("~")[-1] for u in urls]
-        assert "montreal-villeray-saint-michel-parc-extension" in slugs
-        assert "montreal-rosemont-la-petite-patrie" in slugs
-        assert "montreal-ahuntsic-cartierville" in slugs
-
-    def test_build_urls_includes_plateau(self):
-        config = {
-            "criteria": {
-                **CONFIG["criteria"],
-                "neighbourhoods": {
-                    "Le Plateau-Mont-Royal": ["plateau", "mile-end"],
-                },
-            }
-        }
-        urls = _build_urls(config)
-        slugs = [u.split("~")[-1] for u in urls]
-        assert "montreal-le-plateau-mont-royal" in slugs
+    def test_build_urls_is_rental_page(self):
+        urls = _build_urls()
+        assert "a-louer" in urls[0]
 
 
 class TestRentalsFixture:

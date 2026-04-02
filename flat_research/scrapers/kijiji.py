@@ -105,23 +105,11 @@ def _fetch_detail(session: requests.Session, url: str) -> dict:
     return result
 
 
-def scrape(config: dict, session: requests.Session | None = None) -> list[Listing]:
-    """Scrape Kijiji for matching rental listings."""
+def scrape(session: requests.Session | None = None) -> list[Listing]:
+    """Scrape latest Kijiji rental listings for Montreal (no filters)."""
     listings = []
-    criteria = config["criteria"]
 
-    params = {
-        "rb": criteria["price_min"],
-        "re": criteria["price_max"],
-        "numberbedrooms": criteria["bedrooms_min"],
-    }
-    if criteria.get("furnished"):
-        params["furnished"] = 1
-    if criteria.get("parking"):
-        params["numberparkingspots"] = 1
-
-    query_string = "&".join(f"{k}={v}" for k, v in params.items())
-    url = f"{KIJIJI_BASE}{CATEGORY_PATH}?{query_string}"
+    url = f"{KIJIJI_BASE}{CATEGORY_PATH}"
     logger.info(f"Scraping Kijiji: {url}")
 
     if session is None:
