@@ -80,9 +80,9 @@ def run_check() -> bool:
         from flat_research.scrapers.rentals import RENTALS_GQL_KEY, _authenticate
 
         if RENTALS_GQL_KEY:
-            from curl_cffi import requests as cf_requests
+            from flat_research.scrapers.rentals import _create_session
 
-            session = cf_requests.Session(impersonate="chrome")
+            session = _create_session()
             jwt = _authenticate(session)
             checks["Rentals.ca GraphQL auth"] = bool(jwt)
         else:

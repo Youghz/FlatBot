@@ -62,6 +62,30 @@ query SearchListings(
 """
 
 
+_BROWSER_HEADERS = {
+    "Accept": "application/json, text/plain, */*",
+    "Accept-Language": "fr-CA,fr;q=0.9,en-US;q=0.8,en;q=0.7",
+    "Origin": "https://rentals.ca",
+    "Referer": "https://rentals.ca/montreal",
+}
+
+
+def _create_session() -> cf_requests.Session:
+    """Create a curl_cffi session with browser impersonation.
+
+    Visits the homepage first to obtain Cloudflare cookies,
+    then reuses the session for GraphQL requests.
+    """
+    session = cf_requests.Session(impersonate="chrome")
+    session.headers.update(_BROWSER_HEADERS)
+    # Warm up: visit homepage to get Cloudflare clearance cookies
+    try:
+        session.get("https://rentals.ca/montreal", timeout=15)
+    except Exception as e:
+        logger.debug(f"Rentals.ca warmup failed (non-blocking): {e}")
+    return session
+
+
 def _authenticate(session: cf_requests.Session) -> str:
     """Acquire a JWT access token from the Rentals.ca GraphQL API."""
     payload = {
@@ -189,8 +213,8 @@ def scrape(session: cf_requests.Session | None = None) -> list[Listing]:
     """Scrape latest Rentals.ca listings for Montreal (no filters)."""
     listings = []
 
-    # Use curl_cffi with Chrome TLS fingerprint to bypass Cloudflare
-    session = cf_requests.Session(impersonate="chrome")
+    # Use curl_cffi with Chrome TLS fingerprint + browser headers to bypass Cloudflare
+    session = _create_session()
 
     # Authenticate
     try:
