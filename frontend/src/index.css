@@ -822,7 +822,16 @@ legend {
 
 .hero {
   text-align: center;
-  padding: 5rem 0 3rem;
+  padding: 4rem 0 2rem;
+}
+
+.hero-tag {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--accent);
+  font-weight: 600;
+  margin-bottom: 1rem;
 }
 
 .hero-title {
@@ -995,6 +1004,168 @@ legend {
   font-size: 0.8rem;
 }
 
+/* Pain Points */
+
+.pain-points {
+  padding: 1rem 0 2rem;
+}
+
+.pain-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+.pain-card {
+  background: rgba(255, 107, 107, 0.05);
+  border: 1px solid rgba(255, 107, 107, 0.15);
+  border-radius: var(--radius-md);
+  padding: 1rem;
+  text-align: center;
+}
+
+.pain-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.8rem;
+  height: 1.8rem;
+  background: rgba(255, 107, 107, 0.15);
+  color: var(--danger);
+  border-radius: 50%;
+  font-weight: 700;
+  font-size: 0.8rem;
+  margin-bottom: 0.5rem;
+}
+
+.pain-card p {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+/* Stats Section */
+
+.stats-section {
+  padding: 2rem 0;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+  text-align: center;
+}
+
+.stat {
+  padding: 1.5rem;
+}
+
+.stat-number {
+  display: block;
+  font-size: 2.2rem;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: -0.02em;
+}
+
+.stat-label {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+/* Telegram Mockup */
+
+.telegram-section {
+  padding: 3rem 0;
+}
+
+.telegram-section h2 {
+  text-align: center;
+  font-size: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.telegram-mockup {
+  max-width: 420px;
+  margin: 0 auto;
+  background: #0e1621;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-lg);
+}
+
+.telegram-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: #17212b;
+  border-bottom: 1px solid #1e2c3a;
+}
+
+.telegram-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.2rem;
+  height: 2.2rem;
+  background: var(--accent);
+  color: white;
+  border-radius: 50%;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.telegram-header strong {
+  font-size: 0.9rem;
+  color: #e1e3e6;
+}
+
+.telegram-status {
+  display: block;
+  font-size: 0.7rem;
+  color: #6d7f8f;
+}
+
+.telegram-messages {
+  padding: 1rem;
+}
+
+.telegram-bubble {
+  background: #182533;
+  border-radius: 0 12px 12px 12px;
+  padding: 0.6rem 0.8rem;
+  position: relative;
+  max-width: 100%;
+}
+
+.telegram-text {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: #e1e3e6;
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 0;
+}
+
+.telegram-time {
+  display: block;
+  text-align: right;
+  font-size: 0.65rem;
+  color: #6d7f8f;
+  margin-top: 0.25rem;
+}
+
+/* Fresh indicator */
+
+.cell-fresh {
+  color: var(--success) !important;
+  font-weight: 600;
+}
+
 /* Demo Section */
 
 .demo-section {
@@ -1034,6 +1205,9 @@ legend {
   .hero-cta { flex-direction: column; align-items: center; }
   .steps { grid-template-columns: 1fr; }
   .source-list { grid-template-columns: 1fr; }
+  .pain-grid { grid-template-columns: 1fr; }
+  .stats-grid { grid-template-columns: 1fr; gap: 0.5rem; }
+  .stat { padding: 0.75rem; }
 }
 
 /* === Scrollbar === */
