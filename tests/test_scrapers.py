@@ -19,12 +19,9 @@ CONFIG = {
     "criteria": {
         "city": "Montreal",
         "neighbourhoods": {
-            "Villeray": ["villeray", "saint-michel", "parc-extension"],
-            "Mile-Ex": ["mile-ex", "mile ex"],
-            "Petite-Patrie": ["petite-patrie", "petite patrie"],
-            "Rosemont": ["rosemont"],
-            "Petite-Italie": ["petite-italie", "petite italie", "jean-talon"],
-            "Ahuntsic": ["ahuntsic", "cartierville"],
+            "Villeray—Saint-Michel—Parc-Extension": ["villeray", "saint-michel", "parc-extension"],
+            "Rosemont—La Petite-Patrie": ["rosemont", "petite-patrie", "petite italie"],
+            "Ahuntsic-Cartierville": ["ahuntsic", "cartierville"],
         },
         "bedrooms_min": 3,
         "price_min": 2000,
@@ -111,8 +108,7 @@ class TestCentrisUrls:
             "criteria": {
                 **CONFIG["criteria"],
                 "neighbourhoods": {
-                    "Plateau": ["plateau"],
-                    "Mile-End": ["mile-end"],
+                    "Le Plateau-Mont-Royal": ["plateau", "mile-end"],
                 },
             }
         }

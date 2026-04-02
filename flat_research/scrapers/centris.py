@@ -11,6 +11,7 @@ from bs4 import BeautifulSoup
 
 from flat_research.http_client import create_session, get
 from flat_research.models import Listing
+from flat_research.neighbourhoods import NEIGHBOURHOODS, build_keyword_map
 from flat_research.parsing import (
     check_furnished_parking,
     coerce_bool,
@@ -24,34 +25,8 @@ logger = logging.getLogger(__name__)
 
 CENTRIS_BASE = "https://www.centris.ca"
 
-# Centris URL path slugs for target neighbourhoods
-BOROUGH_SLUGS = {
-    "Villeray": "montreal-villeray-saint-michel-parc-extension",
-    "Mile-Ex": "montreal-villeray-saint-michel-parc-extension",
-    "Mile-End": "montreal-le-plateau-mont-royal",
-    "Plateau": "montreal-le-plateau-mont-royal",
-    "Petite-Patrie": "montreal-rosemont-la-petite-patrie",
-    "Rosemont": "montreal-rosemont-la-petite-patrie",
-    "Petite-Italie": "montreal-villeray-saint-michel-parc-extension",
-    "Ahuntsic": "montreal-ahuntsic-cartierville",
-}
-
-NEIGHBOURHOOD_KEYWORDS = {
-    "villeray": "Villeray",
-    "mile-ex": "Mile-Ex",
-    "mile ex": "Mile-Ex",
-    "mile-end": "Mile-End",
-    "mile end": "Mile-End",
-    "petite-patrie": "Petite-Patrie",
-    "petite patrie": "Petite-Patrie",
-    "rosemont": "Rosemont",
-    "petite-italie": "Petite-Italie",
-    "petite italie": "Petite-Italie",
-    "plateau": "Plateau",
-    "plateau-mont-royal": "Plateau",
-    "plateau mont-royal": "Plateau",
-    "ahuntsic": "Ahuntsic",
-}
+# Reverse map: search term → display name
+NEIGHBOURHOOD_KEYWORDS = build_keyword_map()
 
 
 def _build_urls(config: dict) -> list[str]:
@@ -60,8 +35,13 @@ def _build_urls(config: dict) -> list[str]:
 
     neighbourhood_names = get_neighbourhood_names(config["criteria"])
 
-    # Deduplicate borough slugs (multiple neighbourhoods map to same borough)
-    slugs = list(dict.fromkeys(BOROUGH_SLUGS[n] for n in neighbourhood_names if n in BOROUGH_SLUGS))
+    # Deduplicate borough slugs using central registry
+    slugs = []
+    for n in neighbourhood_names:
+        entry = NEIGHBOURHOODS.get(n, {})
+        slug = entry.get("centris_slug", "")
+        if slug and slug not in slugs:
+            slugs.append(slug)
 
     urls = []
     for slug in slugs:

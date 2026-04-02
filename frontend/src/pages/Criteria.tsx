@@ -1,15 +1,37 @@
 import { type FormEvent, useEffect, useState } from 'react';
 import { apiFetch } from '../api';
 
+// Montreal boroughs + Greater Montreal cities
 const AVAILABLE_NEIGHBOURHOODS: Record<string, string[]> = {
-  'Villeray': ['villeray', 'saint-michel', 'parc-extension', 'parc extension'],
-  'Mile-Ex': ['mile-ex', 'mile ex', 'marconi-alexandra'],
-  'Mile-End': ['mile-end', 'mile end'],
-  'Plateau': ['plateau', 'plateau-mont-royal', 'plateau mont-royal'],
-  'Petite-Patrie': ['petite-patrie', 'petite patrie', 'la petite-patrie'],
-  'Rosemont': ['rosemont'],
-  'Petite-Italie': ['petite-italie', 'petite italie', 'little italy', 'jean-talon'],
-  'Ahuntsic': ['ahuntsic', 'cartierville', 'sault-au-récollet'],
+  // --- Ile de Montreal ---
+  'Ahuntsic-Cartierville': ['ahuntsic', 'cartierville', 'sault-au-récollet'],
+  'Anjou': ['anjou'],
+  'CDN-NDG': ['côte-des-neiges', 'cote-des-neiges', 'notre-dame-de-grâce', 'ndg'],
+  'Lachine': ['lachine'],
+  'LaSalle': ['lasalle', 'la salle'],
+  'Plateau-Mont-Royal': ['plateau', 'plateau-mont-royal', 'mile-end', 'mile end', 'mile-ex', 'mile ex'],
+  'Le Sud-Ouest': ['sud-ouest', 'griffintown', 'saint-henri', 'petite-bourgogne', 'pointe-saint-charles'],
+  'Mercier-Hochelaga': ['mercier', 'hochelaga', 'hochelaga-maisonneuve', 'maisonneuve'],
+  'Montréal-Nord': ['montréal-nord', 'montreal-nord'],
+  'Outremont': ['outremont'],
+  'Pierrefonds-Roxboro': ['pierrefonds', 'roxboro'],
+  'RDP-PAT': ['rivière-des-prairies', 'rdp', 'pointe-aux-trembles'],
+  'Rosemont-Petite-Patrie': ['rosemont', 'petite-patrie', 'petite patrie', 'petite-italie', 'little italy'],
+  'Saint-Laurent': ['saint-laurent', 'st-laurent'],
+  'Saint-Léonard': ['saint-léonard', 'saint-leonard'],
+  'Verdun': ['verdun', 'île-des-soeurs', 'ile-des-soeurs'],
+  'Ville-Marie': ['ville-marie', 'centre-ville', 'downtown', 'vieux-montréal', 'quartier latin'],
+  'Villeray-Saint-Michel-PE': ['villeray', 'saint-michel', 'parc-extension', 'parc extension'],
+  // --- Villes liées ---
+  'Westmount': ['westmount'],
+  'Mont-Royal': ['mont-royal', 'tmr'],
+  'Côte-Saint-Luc': ['côte-saint-luc', 'cote-saint-luc'],
+  'Dorval': ['dorval'],
+  'Pointe-Claire': ['pointe-claire'],
+  'DDO': ['dollard-des-ormeaux', 'ddo'],
+  'Laval': ['laval', 'chomedey', 'laval-des-rapides', 'vimont', 'sainte-dorothée', 'fabreville', 'sainte-rose'],
+  'Longueuil': ['longueuil', 'saint-hubert', 'greenfield park'],
+  'Brossard': ['brossard'],
 };
 
 export default function Criteria() {
